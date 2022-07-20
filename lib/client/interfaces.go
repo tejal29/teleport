@@ -18,10 +18,14 @@ package client
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/ed25519"
+	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gravitational/teleport"
@@ -402,14 +406,49 @@ func (k *Key) CertRoles() ([]string, error) {
 	return roles, nil
 }
 
-// AsAgentKeys converts client.Key struct to a []*agent.AddedKey. All elements
-// of the []*agent.AddedKey slice need to be loaded into the agent!
+const (
+	agentCommentPrefix    = "teleport"
+	agentCommentSeparator = ":"
+)
+
+// teleportAgentKeyCertName returns a teleport agent key name like "teleport:<proxyHost>:<userName>:<clusterName>".
+// This name should be used/seen in the comment section of Teleport agent certs and keys.
+func teleportAgentKeyName(k KeyIndex) string {
+	return strings.Join([]string{agentCommentPrefix, k.ProxyHost, k.ClusterName, k.Username}, agentCommentSeparator)
+}
+
+// IsTeleportAgentKey whether the given agent key has the Teleport agent key name prefix.
+func isTeleportAgentKey(key *agent.Key) bool {
+	return strings.HasPrefix(key.Comment, agentCommentPrefix+agentCommentSeparator)
+}
+
+// AsAgentKey converts this key to an agent.AddedKey. If the key is not
+// supported as an agent key, a trace.NotImplemented error is returned.
 func (k *Key) AsAgentKey() (agent.AddedKey, error) {
 	sshCert, err := k.SSHCert()
 	if err != nil {
 		return agent.AddedKey{}, trace.Wrap(err)
 	}
-	return k.PrivateKey.AsAgentKey(sshCert)
+
+	switch k.Signer.(type) {
+	case *rsa.PrivateKey, *ecdsa.PrivateKey, ed25519.PrivateKey:
+		// put a teleport identifier along with the teleport user into the comment field
+		return agent.AddedKey{
+			PrivateKey:       k.Signer,
+			Certificate:      sshCert,
+			Comment:          teleportAgentKeyName(k.KeyIndex),
+			LifetimeSecs:     0,
+			ConfirmBeforeUse: false,
+		}, nil
+	default:
+		// We return a not implemented error because agent.AddedKey only
+		// supports plain RSA, ECDSA, and ED25519 keys. Non-standard private
+		// keys, like hardware-based private keys, will require custom solutions
+		// which may not be included in their initial implementation. This will
+		// only affect functionality related to agent forwarding, so we give the
+		// caller the ability to handle the error gracefully.
+		return agent.AddedKey{}, trace.NotImplemented("cannot create an agent key using private key signer of type %T", k.Signer)
+	}
 }
 
 // TeleportTLSCertificate returns the parsed x509 certificate for
