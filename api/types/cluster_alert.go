@@ -35,6 +35,7 @@ type alertOptions struct {
 	labels   map[string]string
 	severity AlertSeverity
 	created  time.Time
+	hostID   string
 }
 
 // AlertOption is a functional option for alert construction.
@@ -54,6 +55,13 @@ func WithAlertLabel(key, val string) AlertOption {
 func WithAlertSeverity(severity AlertSeverity) AlertOption {
 	return func(options *alertOptions) {
 		options.severity = severity
+	}
+}
+
+// WithHostID sets the host ID of an alert.
+func WithHostID(hostID string) AlertOption {
+	return func(options *alertOptions) {
+		options.hostID = hostID
 	}
 }
 
@@ -84,6 +92,7 @@ func NewClusterAlert(name string, message string, opts ...AlertOption) (ClusterA
 			Severity: options.severity,
 			Message:  message,
 			Created:  options.created,
+			HostID:   options.hostID,
 		},
 	}
 	if err := alert.CheckAndSetDefaults(); err != nil {

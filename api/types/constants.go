@@ -458,6 +458,9 @@ const (
 
 	// AlertLink is an internal label that indicates that an alert is a link.
 	AlertLink = "teleport.internal/link"
+
+	// AlertLicenseExpired is an internal label that indicates that the license has expired.
+	AlertLicenseExpired = "teleport.internal/license-warning-expired"
 )
 
 // RequestableResourceKinds lists all Teleport resource kinds users can request access to.
