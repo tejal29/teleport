@@ -171,9 +171,9 @@ type webauthnCredentialAttestation struct {
 	// Authenticator data that was created for this credential.
 	pbAuthenticatorData *byte
 	// Size of CBOR encoded attestation information
-	//0 => encoded as CBOR null value.
+	// 0 => encoded as CBOR null value.
 	cbAttestation uint32
-	//Encoded CBOR attestation information
+	// Encoded CBOR attestation information
 	pbAttestation           *byte
 	dwAttestationDecodeType uint32
 	// Following depends on the dwAttestationDecodeType
@@ -343,7 +343,7 @@ type webauthnCommonAttestation struct {
 	pX5c *webauthnX5C
 
 	// Following are also set for TPM
-	pwszVer    *uint16 // L"2.0"
+	pwszVer    *uint16 // "2.0"
 	cbCertInfo uint32
 	pbCertInfo *byte
 	cbPubArea  uint32
