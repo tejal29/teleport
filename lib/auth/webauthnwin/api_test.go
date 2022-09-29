@@ -81,7 +81,7 @@ func TestRegister(t *testing.T) {
 				cc.Response.User.DisplayName = "display name"
 				cc.Response.AuthenticatorSelection.UserVerification = protocol.VerificationRequired
 				cc.Response.AuthenticatorSelection.AuthenticatorAttachment = protocol.CrossPlatform
-				cc.Response.AuthenticatorSelection.RequireResidentKey = protocol.ResidentKeyRequired()
+				cc.Response.AuthenticatorSelection.ResidentKey = protocol.ResidentKeyRequirementRequired
 				return &cc
 			},
 			assertFn: func(t *testing.T, ccr *webauthn.CredentialCreationResponse, req *makeCredentialRequest) {
@@ -102,6 +102,19 @@ func TestRegister(t *testing.T) {
 			assertFn: func(t *testing.T, ccr *webauthn.CredentialCreationResponse, req *makeCredentialRequest) {
 				assert.Equal(t, uint32(2), req.opts.dwUserVerificationRequirement)
 				assert.Equal(t, uint32(1), req.opts.dwAuthenticatorAttachment)
+			},
+		},
+		{
+			name:   "RRK from RequireResidentKey if is empty ResidentKey",
+			origin: origin,
+			createCC: func() *wanlib.CredentialCreation {
+				cc := *okCC
+				cc.Response.User.DisplayName = "display name"
+				cc.Response.AuthenticatorSelection.RequireResidentKey = protocol.ResidentKeyRequired()
+				return &cc
+			},
+			assertFn: func(t *testing.T, ccr *webauthn.CredentialCreationResponse, req *makeCredentialRequest) {
+				assert.Equal(t, uint32(1), req.opts.bRequireResidentKey)
 			},
 		},
 	}

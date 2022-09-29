@@ -257,11 +257,20 @@ func userVerificationToCType(in protocol.UserVerificationRequirement) uint32 {
 	}
 }
 
-func requireResidentKeyToCType(in *bool) uint32 {
-	if in == nil {
-		return 0
+func requirePreferResidentKey(in protocol.AuthenticatorSelection) (requireRK bool, preferRK bool) {
+	switch in.ResidentKey {
+	case protocol.ResidentKeyRequirementRequired:
+		return true, false
+	case protocol.ResidentKeyRequirementPreferred:
+		return false, true
+	case protocol.ResidentKeyRequirementDiscouraged:
+		return false, false
+	default:
+		if in.RequireResidentKey != nil && *in.RequireResidentKey {
+			return true, false
+		}
+		return false, false
 	}
-	return boolToUint32(*in)
 }
 
 func makeCredOptionsToCType(in protocol.PublicKeyCredentialCreationOptions) (*webauthnAuthenticatorMakeCredentialOptions, error) {
@@ -270,9 +279,7 @@ func makeCredOptionsToCType(in protocol.PublicKeyCredentialCreationOptions) (*we
 		return nil, err
 	}
 
-	// TODO (tobiaszheller): teleport server right now does not support
-	// preferResidentKey.
-	var bPreferResidentKey uint32
+	requiredRK, preferRK := requirePreferResidentKey(in.AuthenticatorSelection)
 	return &webauthnAuthenticatorMakeCredentialOptions{
 		// https://github.com/microsoft/webauthn/blob/7ab979cc833bfab9a682ed51761309db57f56c8c/webauthn.h#L36-L97
 		// contains information about different versions.
@@ -281,10 +288,10 @@ func makeCredOptionsToCType(in protocol.PublicKeyCredentialCreationOptions) (*we
 		dwTimeoutMilliseconds:             uint32(in.Timeout),
 		dwAuthenticatorAttachment:         attachmentToCType(in.AuthenticatorSelection.AuthenticatorAttachment),
 		dwAttestationConveyancePreference: conveyancePreferenceToCType(in.Attestation),
-		bRequireResidentKey:               requireResidentKeyToCType(in.AuthenticatorSelection.RequireResidentKey),
+		bRequireResidentKey:               boolToUint32(requiredRK),
 		dwUserVerificationRequirement:     userVerificationToCType(in.AuthenticatorSelection.UserVerification),
 		pExcludeCredentialList:            exCredList,
-		bPreferResidentKey:                bPreferResidentKey,
+		bPreferResidentKey:                boolToUint32(preferRK),
 	}, nil
 }
 
