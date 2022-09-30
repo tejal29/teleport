@@ -397,6 +397,8 @@ func (s *Service) Stop() {
 		gateway.Close()
 	}
 
+	// s.closeContext is used for the tshd events client which is utilized within a callback passed to
+	// every new gateway, so let's cancel the context only after closing the gateways.
 	s.cancel()
 }
 
