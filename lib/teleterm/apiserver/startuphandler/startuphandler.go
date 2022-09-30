@@ -32,9 +32,9 @@ type Handler struct {
 	// WaitForTshdEventsServerAddressC gets closed after the address becomes available, that is the
 	// Electron app calls ResolveTshdEventsServerAddress.
 	WaitForTshdEventsServerAddressC chan struct{}
-	// TshdEventsServerAddress becomes available after the Electron app makes a call to
+	// tshdEventsServerAddress becomes available after the Electron app makes a call to
 	// ResolveTshdEventsServerAddress.
-	TshdEventsServerAddress string
+	tshdEventsServerAddress string
 	// waitForTshdEventsClientC is closed after the APIServer creates a tshd events client and injects
 	// it into daemon.Service.
 	waitForTshdEventsClientC chan struct{}
@@ -63,7 +63,7 @@ func (h *Handler) ResolveTshdEventsServerAddress(ctx context.Context, req *api.R
 	default:
 	}
 
-	h.TshdEventsServerAddress = req.Address
+	h.tshdEventsServerAddress = req.Address
 	close(h.WaitForTshdEventsServerAddressC)
 	return &api.ResolveTshdEventsServerAddressResponse{}, nil
 }
@@ -83,6 +83,10 @@ func (h *Handler) WaitForTshdEventsClient(ctx context.Context, req *api.WaitForT
 }
 
 // Other methods
+
+func (h *Handler) TshdEventsServerAddress() string {
+	return h.tshdEventsServerAddress
+}
 
 // MarkTshdEventsClientAsReady closes waitForTshdEventsClientC, allowing the WaitForTshdEventsClient
 // handler to return a response.

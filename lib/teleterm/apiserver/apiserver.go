@@ -127,7 +127,7 @@ func (s *APIServer) createAndInjectTshdEventsClient(startupServiceHandler *start
 	case <-startupServiceHandler.WaitForTshdEventsServerAddressC:
 	}
 
-	tshdEventsServerAddress := startupServiceHandler.TshdEventsServerAddress
+	tshdEventsServerAddress := startupServiceHandler.TshdEventsServerAddress()
 	s.Log.Info("tshd events server address obtained, creating a client")
 
 	tshdEventsCreds := grpc.WithInsecure()
