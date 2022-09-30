@@ -33,7 +33,6 @@ func New(cfg Config) (*Service, error) {
 		return nil, trace.Wrap(err)
 	}
 
-	// TODO: Pass context from above.
 	closeContext, cancel := context.WithCancel(context.Background())
 
 	return &Service{
@@ -419,8 +418,10 @@ func (s *Service) SetTshdEventsClient(client api.TshdEventsServiceClient) {
 
 // Service is the daemon service
 type Service struct {
-	cfg          *Config
-	mu           sync.RWMutex
+	cfg *Config
+	mu  sync.RWMutex
+	// closeContext is canceled when Service is getting stopped. It is used as a context for the calls
+	// to the tshd events gRPC client.
 	closeContext context.Context
 	cancel       context.CancelFunc
 	// gateways holds the long-running gateways for resources on different clusters. So far it's been
