@@ -71,12 +71,12 @@ type webauthnCoseCredentialParameter struct {
 type webauthnAuthenticatorMakeCredentialOptions struct {
 	dwVersion             uint32
 	dwTimeoutMilliseconds uint32
-	// Credentials used for exclusion.
-	//nolint:unused
-	credentialList webauthnCredentials
+	// For excluding credentials use pExcludeCredentialList.
+	// This field is kept just to keep size of struct valid.
+	_ webauthnCredentials
 	// Optional extensions to parse when performing the operation.
-	//nolint:unused
-	extensions webauthnExtenstions
+	// Right now not supported by Teleport.
+	_ webauthnExtenstions
 	// Optional. Platform vs Cross-Platform Authenticators.
 	dwAuthenticatorAttachment uint32
 	// Optional. Require key to be resident or not. Defaulting to FALSE.
@@ -86,16 +86,15 @@ type webauthnAuthenticatorMakeCredentialOptions struct {
 	// Attestation Conveyance Preference.
 	dwAttestationConveyancePreference uint32
 	// Reserved for future Use
-	//nolint:unused
-	dwFlags uint32
+	_ uint32
 
 	//
 	// The following fields have been added in WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_2
 	//
 
 	// Cancellation Id - Optional - See WebAuthNGetCancellationId
-	//nolint:unused
-	pCancellationID *GUID
+	// This field is kept just to keep size of struct valid.
+	_ *GUID
 
 	//
 	// The following fields have been added in WEBAUTHN_AUTHENTICATOR_MAKE_CREDENTIAL_OPTIONS_VERSION_3
@@ -109,13 +108,13 @@ type webauthnAuthenticatorMakeCredentialOptions struct {
 	//
 
 	// Enterprise Attestation
-	//nolint:unused
-	dwEnterpriseAttestation uint32
+	// This field is kept just to keep size of struct valid.
+	_ uint32
 	// Large Blob Support: none, required or preferred
 	// NTE_INVALID_PARAMETER when large blob required or preferred and
 	//   bRequireResidentKey isn't set to TRUE
-	//nolint:unused
-	dwLargeBlobSupport uint32
+	// This field is kept just to keep size of struct valid.
+	_ uint32
 	// Optional. Prefer key to be resident. Defaulting to FALSE. When TRUE,
 	// overrides the above bRequireResidentKey.
 	bPreferResidentKey uint32
@@ -125,17 +124,17 @@ type webauthnAuthenticatorMakeCredentialOptions struct {
 	//
 
 	// Optional. BrowserInPrivate Mode. Defaulting to FALSE.
-	//nolint:unused
-	bBrowserInPrivateMode uint32
+	// This field is kept just to keep size of struct valid.
+	_ uint32
 }
 
-//nolint:unused
+//nolint:unused // This struct is kept just to keep size of struct valid.
 type webauthnCredentials struct {
-	cCredentials uint32
-	pCredentials *webauthnCredential
+	_ uint32
+	_ *webauthnCredential
 }
 
-//nolint:unused
+//nolint:unused // TODO: remove when linter runs on windows build tag
 type webauthnCredential struct {
 	dwVersion uint32
 	// Size of pbID.
@@ -145,14 +144,14 @@ type webauthnCredential struct {
 	pwszCredentialType *uint16
 }
 
-//nolint:unused
+//nolint:unused // This struct is kept just to keep size of struct valid.
 type webauthnExtension struct {
 	pwszExtensionIdentifier *uint16
 	cbExtension             uint32
 	pvExtension             *byte
 }
 
-//nolint:unused
+//nolint:unused // This struct is kept just to keep size of struct valid.
 type webauthnExtenstions struct {
 	cExtensions uint32
 	pExtensions *webauthnExtension
@@ -174,7 +173,7 @@ type webauthnCredentialList struct {
 	ppCredentials **webauthnCredentialEX
 }
 
-//nolint:unused
+//nolint:unused // TODO: remove when linter runs on windows build tag
 type webauthnCredentialAttestation struct {
 	dwVersion uint32
 	// Attestation format type
@@ -242,29 +241,29 @@ type webauthnAuthenticatorGetAssertionOptions struct {
 	// This is used as guidance, and can be overridden by the platform.
 	dwTimeoutMilliseconds uint32
 	// Allowed Credentials List.
-	//nolint:unused
-	credentialList webauthnCredentials
+	// This field is kept just to keep size of struct valid.
+	_ webauthnCredentials
 	// Optional extensions to parse when performing the operation.
-	//nolint:unused
-	extensions webauthnExtenstions
+	// Right now not supported by Teleport.
+	_ webauthnExtenstions
 	// Optional. Platform vs Cross-Platform Authenticators.
 	dwAuthenticatorAttachment uint32
 	// User Verification Requirement.
 	dwUserVerificationRequirement uint32
 	// Flags
-	//nolint:unused
-	dwFlags uint32
+	// This field is kept just to keep size of struct valid.
+	_ uint32
 
 	//
 	// The following fields have been added in WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_2
 	//
 
 	// Optional identifier for the U2F AppId. Converted to UTF8 before being hashed. Not lower cased.
-	//nolint:unused
+	//nolint:unused // TODO(tobiaszheller): rm nolint when support for U2FappID is added
 	pwszU2fAppID *uint16
 	// If the following is non-NULL, then, set to TRUE if the above pwszU2fAppid was used instead of
 	// PCWSTR pwszRpId;
-	//nolint:unused
+	//nolint:unused // TODO(tobiaszheller): rm nolint when support for U2FappID is added
 	pbU2fAppID uint32
 
 	//
@@ -272,8 +271,8 @@ type webauthnAuthenticatorGetAssertionOptions struct {
 	//
 
 	// Cancellation Id - Optional - See WebAuthNGetCancellationId
-	//nolint:unused
-	pCancellationID *GUID
+	// This field is kept just to keep size of struct valid.
+	_ *GUID
 
 	//
 	// The following fields have been added in WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_4
@@ -285,16 +284,16 @@ type webauthnAuthenticatorGetAssertionOptions struct {
 	//
 	// The following fields have been added in WEBAUTHN_AUTHENTICATOR_GET_ASSERTION_OPTIONS_VERSION_5
 	//
-	//nolint:unused
-	dwCredLargeBlobOperation uint32
+	// This field is kept just to keep size of struct valid.
+	_ uint32
 	// Size of pbCredLargeBlob
-	//nolint:unused
-	cbCredLargeBlob uint32
-	//nolint:unused
-	pbCredLargeBlob *byte
+	// This field is kept just to keep size of struct valid.
+	_ uint32
+	// This field is kept just to keep size of struct valid.
+	_ *byte
 }
 
-//nolint:unused
+//nolint:unused // TODO: remove when linter runs on windows build tag
 type webauthnAssertion struct {
 	dwVersion uint32
 
@@ -328,39 +327,12 @@ type webauthnAssertion struct {
 	dwCredLargeBlobStatus uint32
 }
 
-//nolint:unused
+//nolint:unused // TODO: remove when linter runs on windows build tag
 type webauthnX5C struct {
 	// Length of X.509 encoded certificate
 	cbData uint32
 	// X.509 DER encoded certificate bytes
 	pbData *byte
-}
-
-//nolint:unused
-type webauthnCommonAttestation struct {
-	dwVersion uint32
-
-	// Hash and Padding Algorithm
-	//
-	// The following won't be set for "fido-u2f" which assumes "ES256".
-	pwszAlg *uint16
-	lAlg    int32 // COSE algorithm
-
-	// Signature that was generated for this attestation.
-	cbSignature uint32
-	pbSignature *byte
-
-	// Following is set for Full Basic Attestation. If not, set then, this is Self Attestation.
-	// Array of X.509 DER encoded certificates. The first certificate is the signer, leaf certificate.
-	cX5c uint32
-	pX5c *webauthnX5C
-
-	// Following are also set for TPM
-	pwszVer    *uint16 // "2.0"
-	cbCertInfo uint32
-	pbCertInfo *byte
-	cbPubArea  uint32
-	pbPubArea  *byte
 }
 
 type GUID struct {
