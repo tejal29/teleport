@@ -14,6 +14,19 @@
 
 package webauthnwin
 
+const (
+	// https://github.com/microsoft/webauthn/blob/7ab979cc833bfab9a682ed51761309db57f56c8c/webauthn.h#L493-L496
+	webauthnAttachmentAny           = uint32(0)
+	webauthnAttachmentPlatform      = uint32(1)
+	webauthnAttachmentCrossPlatform = uint32(2)
+
+	// https://github.com/microsoft/webauthn/blob/7ab979cc833bfab9a682ed51761309db57f56c8c/webauthn.h#L498-L501
+	webauthnUserVerificationAny         = uint32(0)
+	webauthnUserVerificationRequired    = uint32(1)
+	webauthnUserVerificationPreferred   = uint32(2)
+	webauthnUserVerificationDiscouraged = uint32(3)
+)
+
 type webauthnRPEntityInformation struct {
 	dwVersion uint32
 	// Identifier for the RP. This field is required.

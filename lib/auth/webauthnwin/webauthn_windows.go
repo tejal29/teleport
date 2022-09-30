@@ -109,7 +109,7 @@ func (n *nativeImpl) GetAssertion(origin string, in *getAssertionRequest) (*wanl
 	ret, _, lastErr := procWebAuthNAuthenticatorGetAssertion.Call(
 		uintptr(hwnd),
 		uintptr(unsafe.Pointer(in.rpID)),
-		uintptr(unsafe.Pointer(in.cd)),
+		uintptr(unsafe.Pointer(in.clientData)),
 		uintptr(unsafe.Pointer(in.opts)),
 		uintptr(unsafe.Pointer(&out)),
 	)
@@ -144,7 +144,7 @@ func (n *nativeImpl) GetAssertion(origin string, in *getAssertionRequest) (*wanl
 			Signature:         signature,
 			UserHandle:        userID,
 			AuthenticatorResponse: wanlib.AuthenticatorResponse{
-				ClientDataJSON: in.jsonEncodedCD,
+				ClientDataJSON: in.jsonEncodedClientData,
 			},
 		},
 	}, nil
@@ -167,8 +167,8 @@ func (n *nativeImpl) MakeCredential(origin string, in *makeCredentialRequest) (*
 		uintptr(hwnd),
 		uintptr(unsafe.Pointer(in.rp)),
 		uintptr(unsafe.Pointer(in.user)),
-		uintptr(unsafe.Pointer(in.creds)),
-		uintptr(unsafe.Pointer(in.cd)),
+		uintptr(unsafe.Pointer(in.credParameters)),
+		uintptr(unsafe.Pointer(in.clientData)),
 		uintptr(unsafe.Pointer(in.opts)),
 		uintptr(unsafe.Pointer(&out)),
 	)
@@ -196,7 +196,7 @@ func (n *nativeImpl) MakeCredential(origin string, in *makeCredentialRequest) (*
 		},
 		AttestationResponse: wanlib.AuthenticatorAttestationResponse{
 			AuthenticatorResponse: wanlib.AuthenticatorResponse{
-				ClientDataJSON: in.jsonEncodedCD,
+				ClientDataJSON: in.jsonEncodedClientData,
 			},
 			AttestationObject: bytesFromCBytes(out.cbAttestationObject, out.pbAttestationObject),
 		},

@@ -68,8 +68,11 @@ func TestRegister(t *testing.T) {
 			origin:   origin,
 			createCC: func() *wanlib.CredentialCreation { return okCC },
 			assertFn: func(t *testing.T, ccr *webauthn.CredentialCreationResponse, req *makeCredentialRequest) {
-				assert.Equal(t, uint32(0), req.opts.dwAuthenticatorAttachment)
-				assert.Equal(t, uint32(3), req.opts.dwUserVerificationRequirement)
+
+				assert.Equal(t, webauthnAttachmentAny, req.opts.dwAuthenticatorAttachment)
+
+				assert.Equal(t, webauthnUserVerificationDiscouraged, req.opts.dwUserVerificationRequirement)
+
 				assert.Equal(t, uint32(0), req.opts.bRequireResidentKey)
 			},
 		},
@@ -85,8 +88,11 @@ func TestRegister(t *testing.T) {
 				return &cc
 			},
 			assertFn: func(t *testing.T, ccr *webauthn.CredentialCreationResponse, req *makeCredentialRequest) {
-				assert.Equal(t, uint32(1), req.opts.dwUserVerificationRequirement)
-				assert.Equal(t, uint32(2), req.opts.dwAuthenticatorAttachment)
+
+				assert.Equal(t, webauthnUserVerificationRequired, req.opts.dwUserVerificationRequirement)
+
+				assert.Equal(t, webauthnAttachmentCrossPlatform, req.opts.dwAuthenticatorAttachment)
+
 				assert.Equal(t, uint32(1), req.opts.bRequireResidentKey)
 			},
 		},
@@ -100,8 +106,24 @@ func TestRegister(t *testing.T) {
 				return &cc
 			},
 			assertFn: func(t *testing.T, ccr *webauthn.CredentialCreationResponse, req *makeCredentialRequest) {
-				assert.Equal(t, uint32(2), req.opts.dwUserVerificationRequirement)
-				assert.Equal(t, uint32(1), req.opts.dwAuthenticatorAttachment)
+
+				assert.Equal(t, webauthnUserVerificationPreferred, req.opts.dwUserVerificationRequirement)
+
+				assert.Equal(t, webauthnAttachmentPlatform, req.opts.dwAuthenticatorAttachment)
+			},
+		},
+		{
+			name:   "with UV discouraged and platform",
+			origin: origin,
+			createCC: func() *wanlib.CredentialCreation {
+				cc := *okCC
+				cc.Response.AuthenticatorSelection.UserVerification = protocol.VerificationDiscouraged
+				return &cc
+			},
+			assertFn: func(t *testing.T, ccr *webauthn.CredentialCreationResponse, req *makeCredentialRequest) {
+
+				assert.Equal(t, webauthnUserVerificationDiscouraged, req.opts.dwUserVerificationRequirement)
+
 			},
 		},
 		{
@@ -164,10 +186,12 @@ func TestLogin(t *testing.T) {
 			origin:      origin,
 			assertionIn: func() *wanlib.CredentialAssertion { return okAssertion },
 			assertFn: func(t *testing.T, car *webauthn.CredentialAssertionResponse, req *getAssertionRequest) {
-				assert.Equal(t, uint32(6), req.opts.dwVersion)
-				assert.Equal(t, uint32(3), req.opts.dwUserVerificationRequirement)
-				assert.Equal(t, uint32(0), req.opts.dwAuthenticatorAttachment)
 
+				assert.Equal(t, uint32(6), req.opts.dwVersion)
+
+				assert.Equal(t, webauthnUserVerificationDiscouraged, req.opts.dwUserVerificationRequirement)
+
+				assert.Equal(t, webauthnAttachmentAny, req.opts.dwAuthenticatorAttachment)
 			},
 		},
 		{
@@ -180,9 +204,12 @@ func TestLogin(t *testing.T) {
 			},
 			opts: LoginOpts{AuthenticatorAttachment: AttachmentPlatform},
 			assertFn: func(t *testing.T, car *webauthn.CredentialAssertionResponse, req *getAssertionRequest) {
+
 				assert.Equal(t, uint32(6), req.opts.dwVersion)
-				assert.Equal(t, uint32(1), req.opts.dwUserVerificationRequirement)
-				assert.Equal(t, uint32(1), req.opts.dwAuthenticatorAttachment)
+
+				assert.Equal(t, webauthnUserVerificationRequired, req.opts.dwUserVerificationRequirement)
+
+				assert.Equal(t, webauthnAttachmentPlatform, req.opts.dwAuthenticatorAttachment)
 
 			},
 		},
@@ -196,9 +223,29 @@ func TestLogin(t *testing.T) {
 			},
 			opts: LoginOpts{AuthenticatorAttachment: AttachmentCrossPlatform},
 			assertFn: func(t *testing.T, car *webauthn.CredentialAssertionResponse, req *getAssertionRequest) {
+
 				assert.Equal(t, uint32(6), req.opts.dwVersion)
-				assert.Equal(t, uint32(2), req.opts.dwUserVerificationRequirement)
-				assert.Equal(t, uint32(2), req.opts.dwAuthenticatorAttachment)
+
+				assert.Equal(t, webauthnUserVerificationPreferred, req.opts.dwUserVerificationRequirement)
+
+				assert.Equal(t, webauthnAttachmentCrossPlatform, req.opts.dwAuthenticatorAttachment)
+
+			},
+		},
+		{
+			name:   "uv discouraged",
+			origin: origin,
+			assertionIn: func() *wanlib.CredentialAssertion {
+				out := *okAssertion
+				out.Response.UserVerification = protocol.VerificationDiscouraged
+				return &out
+			},
+			opts: LoginOpts{AuthenticatorAttachment: AttachmentCrossPlatform},
+			assertFn: func(t *testing.T, car *webauthn.CredentialAssertionResponse, req *getAssertionRequest) {
+
+				assert.Equal(t, uint32(6), req.opts.dwVersion)
+
+				assert.Equal(t, webauthnUserVerificationDiscouraged, req.opts.dwUserVerificationRequirement)
 
 			},
 		},

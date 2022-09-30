@@ -54,19 +54,19 @@ type nativeWebauthn interface {
 }
 
 type getAssertionRequest struct {
-	rpID          *uint16
-	cd            *webauthnClientData
-	jsonEncodedCD []byte
-	opts          *webauthnAuthenticatorGetAssertionOptions
+	rpID                  *uint16
+	clientData            *webauthnClientData
+	jsonEncodedClientData []byte
+	opts                  *webauthnAuthenticatorGetAssertionOptions
 }
 
 type makeCredentialRequest struct {
-	rp            *webauthnRPEntityInformation
-	user          *webauthnUserEntityInformation
-	creds         *webauthnCoseCredentialParameters
-	cd            *webauthnClientData
-	jsonEncodedCD []byte
-	opts          *webauthnAuthenticatorMakeCredentialOptions
+	rp                    *webauthnRPEntityInformation
+	user                  *webauthnUserEntityInformation
+	credParameters        *webauthnCoseCredentialParameters
+	clientData            *webauthnClientData
+	jsonEncodedClientData []byte
+	opts                  *webauthnAuthenticatorMakeCredentialOptions
 }
 
 // Login implements Login for Windows Webauthn API.
@@ -97,10 +97,10 @@ func Login(ctx context.Context, origin string, assertion *wanlib.CredentialAsser
 	}
 
 	resp, err := native.GetAssertion(origin, &getAssertionRequest{
-		rpID:          rpid,
-		cd:            cd,
-		jsonEncodedCD: jsonEncodedCD,
-		opts:          assertOpts,
+		rpID:                  rpid,
+		clientData:            cd,
+		jsonEncodedClientData: jsonEncodedCD,
+		opts:                  assertOpts,
 	})
 	if err != nil {
 		return nil, "", trace.Wrap(err)
@@ -168,12 +168,12 @@ func Register(
 		return nil, trace.Wrap(err)
 	}
 	resp, err := native.MakeCredential(origin, &makeCredentialRequest{
-		rp:            rp,
-		user:          u,
-		creds:         credParam,
-		cd:            cd,
-		jsonEncodedCD: jsonEncodedCD,
-		opts:          opts,
+		rp:                    rp,
+		user:                  u,
+		credParameters:        credParam,
+		clientData:            cd,
+		jsonEncodedClientData: jsonEncodedCD,
+		opts:                  opts,
 	})
 	if err != nil {
 		return nil, trace.Wrap(err)

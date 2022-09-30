@@ -28,7 +28,7 @@ type webauthnwinCommand struct {
 }
 
 // newWebauthnwinCommand returns webauthnwin subcommands.
-// support is always available.
+// `diag` is always available.
 func newWebauthnwinCommand(app *kingpin.Application) *webauthnwinCommand {
 	wid := app.Command("webauthnwin", "Manage Windows WebAuthn").Hidden()
 	cmd := &webauthnwinCommand{
@@ -49,21 +49,21 @@ func newWebauthnwinDiagCommand(app *kingpin.CmdClause) *webauthnwinDiagCommand {
 
 func (w *webauthnwinDiagCommand) run(cf *CLIConf) error {
 	diag := webauthnwin.CheckSupport()
-	fmt.Printf("\nwebauthnwin available: %v\n", diag.IsAvailable)
-	fmt.Printf("Compiple support: %v\n", diag.HasCompileSupport)
+	fmt.Printf("\nWebauthnWin available: %v\n", diag.IsAvailable)
+	fmt.Printf("Compile support: %v\n", diag.HasCompileSupport)
 	fmt.Printf("DLL API version: %v\n", diag.WebAuthnAPIVersion)
 	fmt.Printf("Has platform UV: %v\n", diag.HasPlatformUV)
 
-	if diag.IsAvailable {
-		resp, err := webauthnwin.Diag(cf.Context, os.Stdout)
-		// Abort if we got a nil diagnostic, otherwise print as much as we can.
-		if resp == nil {
-			return trace.Wrap(err)
-		}
-
-		fmt.Printf("Register successful: %v\n", resp.RegisterSuccessful)
-		fmt.Printf("Login successful: %v\n", resp.LoginSuccessful)
+	if !diag.IsAvailable {
+		return nil
+	}
+	resp, err := webauthnwin.Diag(cf.Context, os.Stdout)
+	// Abort if we got a nil diagnostic, otherwise print as much as we can.
+	if resp == nil {
+		return trace.Wrap(err)
 	}
 
+	fmt.Printf("Register successful: %v\n", resp.RegisterSuccessful)
+	fmt.Printf("Login successful: %v\n", resp.LoginSuccessful)
 	return nil
 }

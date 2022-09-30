@@ -219,11 +219,11 @@ func attachmentToCType(in protocol.AuthenticatorAttachment) uint32 {
 	// https://github.com/microsoft/webauthn/blob/7ab979cc833bfab9a682ed51761309db57f56c8c/webauthn.h#L493-L496
 	switch in {
 	case protocol.Platform:
-		return 1
+		return webauthnAttachmentPlatform
 	case protocol.CrossPlatform:
-		return 2
+		return webauthnAttachmentCrossPlatform
 	default:
-		return 0
+		return webauthnAttachmentAny
 	}
 }
 
@@ -247,13 +247,13 @@ func userVerificationToCType(in protocol.UserVerificationRequirement) uint32 {
 	// https://github.com/microsoft/webauthn/blob/7ab979cc833bfab9a682ed51761309db57f56c8c/webauthn.h#L498-L501
 	switch in {
 	case protocol.VerificationRequired:
-		return 1
+		return webauthnUserVerificationRequired
 	case protocol.VerificationPreferred:
-		return 2
+		return webauthnUserVerificationPreferred
 	case protocol.VerificationDiscouraged:
-		return 3
+		return webauthnUserVerificationDiscouraged
 	default:
-		return 0
+		return webauthnUserVerificationAny
 	}
 }
 
