@@ -100,15 +100,23 @@ func New(cfg Config) (*APIServer, error) {
 	go func() {
 		err := apiServer.createAndInjectTshdEventsClient(startupServiceHandler, shouldUseMTLS, tshdKeyPair)
 		if err != nil {
-			cfg.Log.WithError(err).Error("Could not create and inject tshd events client")
+			cfg.Log.WithError(err).Error("Could not create tshd events client")
 		}
 	}()
 
 	return apiServer, nil
 }
 
-// TODO: Add comment.
-// Wait for the tshd events server address and dynamically inject the client into daemon.Service.
+// createAndInjectTshdEventsClient is executed in a goroutine from apiserver.New.
+// It waits for the Electron app to call the startup service to provide the tshd events server
+// address. Then it initializes the client for that server, injects it into daemon.Server and
+// notifies the startup service that the client is ready.
+//
+// The Electron app is going to wait with any calls until the startup service is notified that the
+// client is ready. If that doesn't happen within a deadline, the app will show an error.
+//
+// This whole process lets us use daemon.Service as if the tshd events client was available from the
+// start.
 func (s *APIServer) createAndInjectTshdEventsClient(startupServiceHandler *startuphandler.Handler, shouldUseMTLS bool, tshdKeyPair tls.Certificate) error {
 	s.Log.Info("Waiting for tshd events server address")
 
@@ -136,10 +144,12 @@ func (s *APIServer) createAndInjectTshdEventsClient(startupServiceHandler *start
 		}
 	}
 
-	client, err := createTshdEventsClient(tshdEventsServerAddress, tshdEventsCreds)
+	conn, err := grpc.Dial(tshdEventsServerAddress, tshdEventsCreds)
 	if err != nil {
-		return trace.Wrap(err, "could not create tshd events client")
+		return trace.Wrap(err)
 	}
+
+	client := api.NewTshdEventsServiceClient(conn)
 	s.Log.Info("tshd events client created")
 
 	s.Daemon.SetTshdEventsClient(client)
@@ -182,17 +192,6 @@ func newListener(hostAddr string) (net.Listener, error) {
 func sendBoundNetworkPortToStdout(addr utils.NetAddr) {
 	// Connect needs this message to know which port has been assigned to the server.
 	fmt.Printf("{CONNECT_GRPC_PORT: %v}\n", addr.Port(1))
-}
-
-func createTshdEventsClient(addr string, creds grpc.DialOption) (api.TshdEventsServiceClient, error) {
-	conn, err := grpc.Dial(addr, creds)
-	if err != nil {
-		return nil, trace.Wrap(err)
-	}
-
-	client := api.NewTshdEventsServiceClient(conn)
-
-	return client, nil
 }
 
 // Server is a combination of the underlying grpc.Server and its RuntimeOpts.

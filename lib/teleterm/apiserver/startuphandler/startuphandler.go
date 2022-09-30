@@ -36,7 +36,7 @@ type Handler struct {
 	// ResolveTshdEventsServerAddress.
 	TshdEventsServerAddress string
 	// waitForTshdEventsClientC is closed after the APIServer creates a tshd events client and injects
-	// it to daemon.Service.
+	// it into daemon.Service.
 	waitForTshdEventsClientC chan struct{}
 }
 
@@ -69,7 +69,7 @@ func (h *Handler) ResolveTshdEventsServerAddress(ctx context.Context, req *api.R
 }
 
 // WaitForTshdEventsClient is called by the Electron app. The function returns after the APIServer
-// creates a tshd events client and injects it to daemon.Service.
+// creates a tshd events client and injects it into daemon.Service.
 //
 // The Electron app waits with performing any other calls until this call finishes. This makes sure
 // that we don't use daemon.Service while the tshd events client is not ready yet.
