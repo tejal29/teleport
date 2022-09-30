@@ -100,7 +100,7 @@ func (c *Cluster) LocalLogin(ctx context.Context, user, password, otpToken strin
 		if err != nil {
 			return trace.Wrap(err)
 		}
-	case constants.SecondFactorU2F, constants.SecondFactorWebauthn:
+	case constants.SecondFactorWebauthn:
 		err := c.localMFALogin(ctx, user, password)
 		if err != nil {
 			return trace.Wrap(err)

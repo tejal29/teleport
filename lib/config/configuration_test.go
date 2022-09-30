@@ -716,7 +716,7 @@ func TestApplyConfig(t *testing.T) {
 		staticTokenPath,
 		pkcs11LibPath,
 	)))
-	require.NoError(t, err)
+	require.NoError(t, err, "ReadConfig failed")
 	require.NotNil(t, conf)
 	require.Equal(t, apiutils.Strings{"web3:443"}, conf.Proxy.PublicAddr)
 
@@ -774,8 +774,6 @@ func TestApplyConfig(t *testing.T) {
 
 	require.Equal(t, "tcp://127.0.0.1:3000", cfg.DiagnosticAddr.FullAddress())
 
-	u2fCAFromFile, err := os.ReadFile("testdata/u2f_attestation_ca.pem")
-	require.NoError(t, err)
 	require.Empty(t, cmp.Diff(cfg.Auth.Preference, &types.AuthPreferenceV2{
 		Kind:    types.KindClusterAuthPreference,
 		Version: types.V2,
@@ -786,37 +784,17 @@ func TestApplyConfig(t *testing.T) {
 		},
 		Spec: types.AuthPreferenceSpecV2{
 			Type:         constants.Local,
-			SecondFactor: constants.SecondFactorOTP,
+			SecondFactor: constants.SecondFactorOptional,
 			U2F: &types.U2F{
-				AppID: "app-id",
-				DeviceAttestationCAs: []string{
-					string(u2fCAFromFile),
-					`-----BEGIN CERTIFICATE-----
-MIIDFzCCAf+gAwIBAgIDBAZHMA0GCSqGSIb3DQEBCwUAMCsxKTAnBgNVBAMMIFl1
-YmljbyBQSVYgUm9vdCBDQSBTZXJpYWwgMjYzNzUxMCAXDTE2MDMxNDAwMDAwMFoY
-DzIwNTIwNDE3MDAwMDAwWjArMSkwJwYDVQQDDCBZdWJpY28gUElWIFJvb3QgQ0Eg
-U2VyaWFsIDI2Mzc1MTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMN2
-cMTNR6YCdcTFRxuPy31PabRn5m6pJ+nSE0HRWpoaM8fc8wHC+Tmb98jmNvhWNE2E
-ilU85uYKfEFP9d6Q2GmytqBnxZsAa3KqZiCCx2LwQ4iYEOb1llgotVr/whEpdVOq
-joU0P5e1j1y7OfwOvky/+AXIN/9Xp0VFlYRk2tQ9GcdYKDmqU+db9iKwpAzid4oH
-BVLIhmD3pvkWaRA2H3DA9t7H/HNq5v3OiO1jyLZeKqZoMbPObrxqDg+9fOdShzgf
-wCqgT3XVmTeiwvBSTctyi9mHQfYd2DwkaqxRnLbNVyK9zl+DzjSGp9IhVPiVtGet
-X02dxhQnGS7K6BO0Qe8CAwEAAaNCMEAwHQYDVR0OBBYEFMpfyvLEojGc6SJf8ez0
-1d8Cv4O/MA8GA1UdEwQIMAYBAf8CAQEwDgYDVR0PAQH/BAQDAgEGMA0GCSqGSIb3
-DQEBCwUAA4IBAQBc7Ih8Bc1fkC+FyN1fhjWioBCMr3vjneh7MLbA6kSoyWF70N3s
-XhbXvT4eRh0hvxqvMZNjPU/VlRn6gLVtoEikDLrYFXN6Hh6Wmyy1GTnspnOvMvz2
-lLKuym9KYdYLDgnj3BeAvzIhVzzYSeU77/Cupofj093OuAswW0jYvXsGTyix6B3d
-bW5yWvyS9zNXaqGaUmP3U9/b6DlHdDogMLu3VLpBB9bm5bjaKWWJYgWltCVgUbFq
-Fqyi4+JE014cSgR57Jcu3dZiehB6UtAPgad9L5cNvua/IWRmm+ANy3O2LH++Pyl8
-SREzU8onbBsjMg9QDiSf5oJLKvd/Ren+zGY7
------END CERTIFICATE-----
-`,
-				},
+				AppID: "https://goteleport.com",
+			},
+			Webauthn: &types.Webauthn{
+				RPID: "goteleport.com",
 			},
 			AllowLocalAuth:        types.NewBoolOption(true),
 			DisconnectExpiredCert: types.NewBoolOption(false),
 			LockingMode:           constants.LockingModeBestEffort,
-			AllowPasswordless:     types.NewBoolOption(false),
+			AllowPasswordless:     types.NewBoolOption(true),
 		},
 	}))
 

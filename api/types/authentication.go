@@ -59,8 +59,6 @@ type AuthPreference interface {
 	IsSecondFactorEnforced() bool
 	// IsSecondFactorTOTPAllowed checks if users are allowed to register TOTP devices.
 	IsSecondFactorTOTPAllowed() bool
-	// IsSecondFactorU2FAllowed checks if users are allowed to register U2F devices.
-	IsSecondFactorU2FAllowed() bool
 	// IsSecondFactorWebauthnAllowed checks if users are allowed to register
 	// Webauthn devices.
 	IsSecondFactorWebauthnAllowed() bool
@@ -240,10 +238,8 @@ func (c *AuthPreferenceV2) GetPreferredLocalMFA() constants.SecondFactorType {
 	switch sf := c.GetSecondFactor(); sf {
 	case constants.SecondFactorOff:
 		return "" // Nothing to suggest.
-	case constants.SecondFactorOTP:
+	case constants.SecondFactorOTP, constants.SecondFactorWebauthn:
 		return sf // Single method.
-	case constants.SecondFactorU2F, constants.SecondFactorWebauthn:
-		return constants.SecondFactorWebauthn // Always WebAuthn.
 	case constants.SecondFactorOn, constants.SecondFactorOptional:
 		// In order of preference:
 		// 1. WebAuthn (public-key based)
@@ -270,11 +266,6 @@ func (c *AuthPreferenceV2) IsSecondFactorTOTPAllowed() bool {
 		c.Spec.SecondFactor == constants.SecondFactorOn
 }
 
-// IsSecondFactorU2FAllowed checks if users are allowed to register U2F devices.
-func (c *AuthPreferenceV2) IsSecondFactorU2FAllowed() bool {
-	return false // Never allowed, marked for removal.
-}
-
 // IsSecondFactorWebauthnAllowed checks if users are allowed to register
 // Webauthn devices.
 func (c *AuthPreferenceV2) IsSecondFactorWebauthnAllowed() bool {
@@ -288,8 +279,7 @@ func (c *AuthPreferenceV2) IsSecondFactorWebauthnAllowed() bool {
 	}
 
 	// Are second factor settings in accordance?
-	return c.Spec.SecondFactor == constants.SecondFactorU2F ||
-		c.Spec.SecondFactor == constants.SecondFactorWebauthn ||
+	return c.Spec.SecondFactor == constants.SecondFactorWebauthn ||
 		c.Spec.SecondFactor == constants.SecondFactorOptional ||
 		c.Spec.SecondFactor == constants.SecondFactorOn
 }
@@ -430,15 +420,6 @@ func (c *AuthPreferenceV2) CheckAndSetDefaults() error {
 		return trace.BadParameter("authentication type %q not supported", c.Spec.Type)
 	}
 
-	// DELETE IN 11.0, time to sunset U2F (codingllama).
-	if c.Spec.SecondFactor == constants.SecondFactorU2F {
-		log.Warnf(`` +
-			`Second Factor "u2f" is deprecated and marked for removal, using "webauthn" instead. ` +
-			`Please update your configuration to use WebAuthn. ` +
-			`Refer to https://goteleport.com/docs/access-controls/guides/webauthn/`)
-		c.Spec.SecondFactor = constants.SecondFactorWebauthn
-	}
-
 	// Make sure second factor makes sense.
 	sf := c.Spec.SecondFactor
 	switch sf {
@@ -540,11 +521,6 @@ func (u *U2F) Check() error {
 	if u.AppID == "" {
 		return trace.BadParameter("u2f configuration missing app_id")
 	}
-	for _, ca := range u.DeviceAttestationCAs {
-		if err := isValidAttestationCert(ca); err != nil {
-			return trace.BadParameter("u2f configuration has an invalid attestation CA: %v", err)
-		}
-	}
 	return nil
 }
 
@@ -580,15 +556,9 @@ func (w *Webauthn) CheckAndSetDefaults(u *U2F) error {
 	}
 
 	// AttestationAllowedCAs.
-	switch {
-	case u != nil && len(u.DeviceAttestationCAs) > 0 && len(w.AttestationAllowedCAs) == 0 && len(w.AttestationDeniedCAs) == 0:
-		log.Infof("WebAuthn: using U2F device attestion CAs as allowed CAs")
-		w.AttestationAllowedCAs = u.DeviceAttestationCAs
-	default:
-		for _, pem := range w.AttestationAllowedCAs {
-			if err := isValidAttestationCert(pem); err != nil {
-				return trace.BadParameter("webauthn allowed CAs entry invalid: %v", err)
-			}
+	for _, pem := range w.AttestationAllowedCAs {
+		if err := isValidAttestationCert(pem); err != nil {
+			return trace.BadParameter("webauthn allowed CAs entry invalid: %v", err)
 		}
 	}
 

@@ -230,31 +230,40 @@ func TestAuthenticationSection(t *testing.T) {
 			mutate: func(cfg cfgMap) {
 				cfg["auth_service"].(cfgMap)["authentication"] = cfgMap{
 					"type":          "local",
-					"second_factor": "u2f",
+					"second_factor": "on",
 					"u2f": cfgMap{
 						"app_id": "https://graviton:3080",
 						"facets": []interface{}{"https://graviton:3080"},
-						"device_attestation_cas": []interface{}{
-							"testdata/u2f_attestation_ca.pam",
-							"-----BEGIN CERTIFICATE-----\nfake certificate\n-----END CERTIFICATE-----",
-						},
 					},
 				}
 			},
 			expectError: require.NoError,
 			expected: &AuthenticationConfig{
 				Type:         "local",
-				SecondFactor: "u2f",
+				SecondFactor: "on",
 				U2F: &UniversalSecondFactor{
-					AppID: "https://graviton:3080",
-					Facets: []string{
-						"https://graviton:3080",
-					},
-					DeviceAttestationCAs: []string{
-						"testdata/u2f_attestation_ca.pam",
-						"-----BEGIN CERTIFICATE-----\nfake certificate\n-----END CERTIFICATE-----",
-					},
+					AppID:  "https://graviton:3080",
+					Facets: []string{"https://graviton:3080"},
 				},
+			},
+		}, {
+			desc: "Local auth with legacy u2f fields",
+			mutate: func(cfg cfgMap) {
+				cfg["auth_service"].(cfgMap)["authentication"] = cfgMap{
+					"type":          "local",
+					"second_factor": "on",
+					"u2f": cfgMap{
+						"app_id": "https://graviton:3080",
+						"facets": []interface{}{"https://graviton:3080"},
+						"device_attestation_cas": []interface{}{ // errors, dangerous to ignore
+							"testdata/u2f_attestation_ca.pam",
+							"-----BEGIN CERTIFICATE-----\nfake certificate\n-----END CERTIFICATE-----",
+						},
+					},
+				}
+			},
+			expectError: func(tt require.TestingT, err error, _ ...interface{}) {
+				require.ErrorContains(tt, err, "device_attestation_cas")
 			},
 		}, {
 			desc: "Local auth with Webauthn",
@@ -299,26 +308,14 @@ func TestAuthenticationSection(t *testing.T) {
 					"second_factor": "on",
 					"u2f": cfgMap{
 						"app_id": "https://example.com",
-						"facets": []interface{}{
-							"https://example.com",
-						},
 					},
 					"webauthn": cfgMap{
-						"disabled": true, // Kept for backwards compatibility, has no effect.
+						"disabled": true, // Legacy config toggle, breaks.
 					},
 				}
 			},
-			expectError: require.NoError,
-			expected: &AuthenticationConfig{
-				Type:         "local",
-				SecondFactor: "on",
-				U2F: &UniversalSecondFactor{
-					AppID:  "https://example.com",
-					Facets: []string{"https://example.com"},
-				},
-				Webauthn: &Webauthn{
-					Disabled: true,
-				},
+			expectError: func(tt require.TestingT, err error, _ ...interface{}) {
+				require.ErrorContains(tt, err, "disabled")
 			},
 		}, {
 			desc: "Local auth with passwordless connector",
@@ -350,6 +347,11 @@ func TestAuthenticationSection(t *testing.T) {
 			text := bytes.NewBuffer(editConfig(t, tt.mutate))
 			cfg, err := ReadConfig(text)
 			tt.expectError(t, err)
+
+			// Don't try to diff if ReadConfig errored.
+			if err != nil {
+				return
+			}
 
 			require.Empty(t, cmp.Diff(cfg.Auth.Authentication, tt.expected))
 		})

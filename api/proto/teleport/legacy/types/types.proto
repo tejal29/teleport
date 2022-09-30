@@ -1389,6 +1389,7 @@ message AuthPreferenceSpecV2 {
   string ConnectorName = 3 [(gogoproto.jsontag) = "connector_name,omitempty"];
 
   // U2F are the settings for the U2F device.
+  // Kept for backwards compatibility reasons, use Webauthn instead.
   U2F U2F = 4 [
     (gogoproto.nullable) = true,
     (gogoproto.jsontag) = "u2f,omitempty"
@@ -1441,19 +1442,12 @@ message AuthPreferenceSpecV2 {
 }
 
 // U2F defines settings for U2F device.
+// Kept only for backwards compatibility with registered U2F devices (the AppID
+// is necessary).
 message U2F {
   // AppID returns the application ID for universal second factor.
+  // Kept for backwards compatibility reasons.
   string AppID = 1 [(gogoproto.jsontag) = "app_id,omitempty"];
-
-  // Facets returns the facets for universal second factor.
-  // Deprecated: Kept for backwards compatibility reasons, but Facets have no
-  // effect since Teleport v10, when Webauthn replaced the U2F implementation.
-  repeated string Facets = 2 [(gogoproto.jsontag) = "facets,omitempty"];
-
-  // DeviceAttestationCAs contains the trusted attestation CAs for U2F
-  // devices.
-  // DELETE IN 11.0, time to sunset U2F (codingllama).
-  repeated string DeviceAttestationCAs = 3 [(gogoproto.jsontag) = "device_attestation_cas,omitempty"];
 }
 
 // Webauthn defines user-visible settings for server-side Web Authentication

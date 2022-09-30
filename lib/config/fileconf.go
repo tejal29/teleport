@@ -51,7 +51,6 @@ import (
 	"github.com/gravitational/teleport/lib/utils"
 
 	"github.com/gravitational/trace"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -946,20 +945,14 @@ func (a *AuthenticationConfig) Parse() (types.AuthPreference, error) {
 
 type UniversalSecondFactor struct {
 	AppID string `yaml:"app_id"`
-	// Facets kept only to avoid breakages during Teleport updates.
-	// Webauthn is now used instead of U2F.
-	Facets               []string `yaml:"facets"`
-	DeviceAttestationCAs []string `yaml:"device_attestation_cas"`
+	// Facets kept to avoid needless problems during Teleport upgrades.
+	// Unused.
+	Facets []string `yaml:"facets"`
 }
 
 func (u *UniversalSecondFactor) Parse() (*types.U2F, error) {
-	attestationCAs, err := getAttestationPEMs(u.DeviceAttestationCAs)
-	if err != nil {
-		return nil, trace.BadParameter("u2f.device_attestation_cas: %v", err)
-	}
 	return &types.U2F{
-		AppID:                u.AppID,
-		DeviceAttestationCAs: attestationCAs,
+		AppID: u.AppID,
 	}, nil
 }
 
@@ -967,10 +960,6 @@ type Webauthn struct {
 	RPID                  string   `yaml:"rp_id,omitempty"`
 	AttestationAllowedCAs []string `yaml:"attestation_allowed_cas,omitempty"`
 	AttestationDeniedCAs  []string `yaml:"attestation_denied_cas,omitempty"`
-	// Disabled has no effect, it is kept solely to not break existing
-	// configurations.
-	// DELETE IN 11.0, time to sunset U2F (codingllama).
-	Disabled bool `yaml:"disabled,omitempty"`
 }
 
 func (w *Webauthn) Parse() (*types.Webauthn, error) {
@@ -981,12 +970,6 @@ func (w *Webauthn) Parse() (*types.Webauthn, error) {
 	deniedCAs, err := getAttestationPEMs(w.AttestationDeniedCAs)
 	if err != nil {
 		return nil, trace.BadParameter("webauthn.attestation_denied_cas: %v", err)
-	}
-	if w.Disabled {
-		log.Warnf(`` +
-			`The "webauthn.disabled" setting is marked for removal and currently has no effect. ` +
-			`Please update your configuration to use WebAuthn. ` +
-			`Refer to https://goteleport.com/docs/access-controls/guides/webauthn/`)
 	}
 	return &types.Webauthn{
 		// Allow any RPID to go through, we rely on

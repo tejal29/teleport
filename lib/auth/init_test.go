@@ -291,10 +291,6 @@ func TestAuthPreference(t *testing.T) {
 			conf.AuthPreference = fromConfigFile
 			return conf.AuthPreference
 		},
-		withAnotherConfigFile: func(t *testing.T, conf *InitConfig) types.ResourceWithOrigin {
-			conf.AuthPreference = newU2FAuthPreferenceFromConfigFile(t)
-			return conf.AuthPreference
-		},
 		setDynamic: func(t *testing.T, authServer *Server) {
 			dynamically, err := types.NewAuthPreference(types.AuthPreferenceSpecV2{
 				SecondFactor: constants.SecondFactorOff,
@@ -610,18 +606,6 @@ func setupConfig(t *testing.T) InitConfig {
 			RSAKeyPairSource: testauthority.New().GenerateKeyPair,
 		},
 	}
-}
-
-func newU2FAuthPreferenceFromConfigFile(t *testing.T) types.AuthPreference {
-	ap, err := types.NewAuthPreferenceFromConfigFile(types.AuthPreferenceSpecV2{
-		Type:         constants.Local,
-		SecondFactor: constants.SecondFactorU2F,
-		U2F: &types.U2F{
-			AppID: "foo",
-		},
-	})
-	require.NoError(t, err)
-	return ap
 }
 
 // Example resources generated using `tctl get all --with-secrets`.
