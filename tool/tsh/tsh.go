@@ -1582,7 +1582,7 @@ func onLogin(cf *CLIConf) error {
 		fmt.Fprintf(os.Stderr, "%s\n\n", warning)
 	}
 
-	if err := common.ShowClusterAlerts(cf.Context, tc, os.Stdout, map[string]string{
+	if err := common.ShowClusterAlerts(cf.Context, tc, os.Stderr, map[string]string{
 		types.AlertOnLogin: "yes",
 	}, nil); err != nil {
 		log.Warn(err)
