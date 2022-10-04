@@ -189,3 +189,11 @@ func Register(
 	}
 	return U2FRegister(ctx, origin, cc)
 }
+
+// PreviewIfPlatformPasswordlessRegistered checks without user interaction
+// if there is any registered platform passwordless credential.
+// User can be empty, it will return credentials for all users.
+// Right now is supports only touchid.
+func PreviewIfPlatformPasswordlessRegistered(ctx context.Context, rpid, user string) bool {
+	return touchid.IsAnyCredentialRegistered(rpid, user)
+}

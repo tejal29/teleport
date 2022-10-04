@@ -3438,6 +3438,13 @@ func (tc *TeleportClient) getSSHLoginFunc(pr *webclient.PingResponse) (SSHLoginF
 		}
 		return tc.pwdlessLogin, nil
 	case authType == constants.Local:
+		if pr.Auth.AllowPasswordless && tc.checkIfPwdlessRegisteredWithoutInteraction(pr) {
+			log.Debug("Trying passwordless login because credentials were found")
+			// if passwordless is enabled and there are passwordless credentials
+			// registered, we can try to go with passwordless login even though
+			// auth=local was selected.
+			return tc.pwdlessLogin, nil
+		}
 		return func(ctx context.Context, priv *keys.PrivateKey) (*auth.SSHLoginResponse, error) {
 			return tc.localLogin(ctx, priv, pr.Auth.SecondFactor)
 		}, nil
@@ -3456,6 +3463,33 @@ func (tc *TeleportClient) getSSHLoginFunc(pr *webclient.PingResponse) (SSHLoginF
 	default:
 		return nil, trace.BadParameter("unsupported authentication type: %q", pr.Auth.Type)
 	}
+}
+
+// previewPlatformPasswordless provides indirection for tests.
+var previewPlatformPasswordless = wancli.PreviewIfPlatformPasswordlessRegistered
+
+// checkIfPwdlessRegisteredWithoutInteraction checks without user interaction
+// if there is any registered passwordless login.
+// Right now is supports only touchid.
+func (tc *TeleportClient) checkIfPwdlessRegisteredWithoutInteraction(pr *webclient.PingResponse) bool {
+	switch tc.Config.AuthenticatorAttachment {
+	case wancli.AttachmentAuto, wancli.AttachmentPlatform:
+		// continiue below
+	default:
+		// Cross-platform or something newer, we can't check anything without
+		// user interactions
+		return false
+	}
+	if pr.Auth.Webauthn == nil {
+		return false
+	}
+	// Only pass on the user if explicitly set, otherwise let the credential
+	// picker kick in.
+	user := ""
+	if tc.ExplicitUsername {
+		user = tc.Username
+	}
+	return previewPlatformPasswordless(context.Background(), pr.Auth.Webauthn.RPID, user)
 }
 
 // SSHLoginFunc is a function which carries out authn with an auth server and returns an auth response.
