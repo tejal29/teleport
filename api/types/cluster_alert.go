@@ -32,10 +32,10 @@ var matchStrictLabel = regexp.MustCompile(`^[a-z0-9\.\-\/]+$`).MatchString
 const validLinkDestination = "goteleport.com"
 
 type alertOptions struct {
-	labels   map[string]string
-	severity AlertSeverity
-	created  time.Time
-	hostID   string
+	labels       map[string]string
+	severity     AlertSeverity
+	created      time.Time
+	instanceName string
 }
 
 // AlertOption is a functional option for alert construction.
@@ -58,10 +58,10 @@ func WithAlertSeverity(severity AlertSeverity) AlertOption {
 	}
 }
 
-// WithHostID sets the host ID of an alert.
-func WithHostID(hostID string) AlertOption {
+// WithInstanceName sets the instance name of an alert.
+func WithInstanceName(instanceName string) AlertOption {
 	return func(options *alertOptions) {
-		options.hostID = hostID
+		options.instanceName = instanceName
 	}
 }
 
@@ -89,10 +89,10 @@ func NewClusterAlert(name string, message string, opts ...AlertOption) (ClusterA
 			},
 		},
 		Spec: ClusterAlertSpec{
-			Severity: options.severity,
-			Message:  message,
-			Created:  options.created,
-			HostID:   options.hostID,
+			Severity:     options.severity,
+			Message:      message,
+			Created:      options.created,
+			InstanceName: options.instanceName,
 		},
 	}
 	if err := alert.CheckAndSetDefaults(); err != nil {
