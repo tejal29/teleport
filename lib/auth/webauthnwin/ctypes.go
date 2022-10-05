@@ -76,7 +76,7 @@ type webauthnAuthenticatorMakeCredentialOptions struct {
 	_ webauthnCredentials
 	// Optional extensions to parse when performing the operation.
 	// Right now not supported by Teleport.
-	_ webauthnExtenstions
+	_ webauthnExtensions
 	// Optional. Platform vs Cross-Platform Authenticators.
 	dwAuthenticatorAttachment uint32
 	// Optional. Require key to be resident or not. Defaulting to FALSE.
@@ -152,7 +152,7 @@ type webauthnExtension struct {
 }
 
 //nolint:unused // This struct is kept just to keep size of struct valid.
-type webauthnExtenstions struct {
+type webauthnExtensions struct {
 	cExtensions uint32
 	pExtensions *webauthnExtension
 }
@@ -206,7 +206,7 @@ type webauthnCredentialAttestation struct {
 	// Following fields have been added in WEBAUTHN_CREDENTIAL_ATTESTATION_VERSION_2
 	//
 
-	Extensions webauthnExtenstions
+	Extensions webauthnExtensions
 
 	//
 	// Following fields have been added in WEBAUTHN_CREDENTIAL_ATTESTATION_VERSION_3
@@ -245,7 +245,7 @@ type webauthnAuthenticatorGetAssertionOptions struct {
 	_ webauthnCredentials
 	// Optional extensions to parse when performing the operation.
 	// Right now not supported by Teleport.
-	_ webauthnExtenstions
+	_ webauthnExtensions
 	// Optional. Platform vs Cross-Platform Authenticators.
 	dwAuthenticatorAttachment uint32
 	// User Verification Requirement.
@@ -319,7 +319,7 @@ type webauthnAssertion struct {
 	// Following fields have been added in WEBAUTHN_ASSERTION_VERSION_2
 	//
 
-	Extensions webauthnExtenstions
+	Extensions webauthnExtensions
 
 	// Size of pbCredLargeBlob
 	cbCredLargeBlob       uint32
