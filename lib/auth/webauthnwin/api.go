@@ -28,7 +28,6 @@ import (
 	"github.com/gravitational/teleport/api/client/proto"
 	wanlib "github.com/gravitational/teleport/lib/auth/webauthn"
 	"github.com/gravitational/trace"
-	log "github.com/sirupsen/logrus"
 )
 
 // LoginOpts groups non-mandatory options for Login.
@@ -71,16 +70,11 @@ type makeCredentialRequest struct {
 
 // Login implements Login for Windows Webauthn API.
 func Login(ctx context.Context, origin string, assertion *wanlib.CredentialAssertion, loginOpts *LoginOpts) (*proto.MFAAuthenticateResponse, string, error) {
-	// TODO(tobiaszheller): move that validation login into separate FN in other PR
-	switch {
-	case origin == "":
+	if origin == "" {
 		return nil, "", trace.BadParameter("origin required")
-	case assertion == nil:
-		return nil, "", trace.BadParameter("assertion required")
-	case len(assertion.Response.Challenge) == 0:
-		return nil, "", trace.BadParameter("assertion challenge required")
-	case assertion.Response.RelyingPartyID == "":
-		return nil, "", trace.BadParameter("assertion relying party ID required")
+	}
+	if err := assertion.Validate(); err != nil {
+		return nil, "", trace.Wrap(err)
 	}
 
 	rpid, err := utf16PtrFromString(assertion.Response.RelyingPartyID)
@@ -118,33 +112,11 @@ func Register(
 	ctx context.Context,
 	origin string, cc *wanlib.CredentialCreation,
 ) (*proto.MFARegisterResponse, error) {
-	// TODO(tobiaszheller): move that validation login into separate FN in other PR
-	switch {
-	case origin == "":
+	if origin == "" {
 		return nil, trace.BadParameter("origin required")
-	case cc == nil:
-		return nil, trace.BadParameter("credential creation required")
-	case len(cc.Response.Challenge) == 0:
-		return nil, trace.BadParameter("credential creation challenge required")
-	case cc.Response.RelyingParty.ID == "":
-		return nil, trace.BadParameter("credential creation relying party ID required")
 	}
-
-	rrk := cc.Response.AuthenticatorSelection.RequireResidentKey != nil && *cc.Response.AuthenticatorSelection.RequireResidentKey
-	log.Debugf("webauthnwin: registration: resident key=%v", rrk)
-	if rrk {
-		// Be more pedantic with resident keys, some of this info gets recorded with
-		// the credential.
-		switch {
-		case len(cc.Response.RelyingParty.Name) == 0:
-			return nil, trace.BadParameter("relying party name required for resident credential")
-		case len(cc.Response.User.Name) == 0:
-			return nil, trace.BadParameter("user name required for resident credential")
-		case len(cc.Response.User.DisplayName) == 0:
-			return nil, trace.BadParameter("user display name required for resident credential")
-		case len(cc.Response.User.ID) == 0:
-			return nil, trace.BadParameter("user ID required for resident credential")
-		}
+	if err := cc.Validate(); err != nil {
+		return nil, trace.Wrap(err)
 	}
 
 	rp, err := rpToCType(cc.Response.RelyingParty)
