@@ -41,7 +41,8 @@ func TestRegister(t *testing.T) {
 				},
 			},
 			User: protocol.UserEntity{
-				ID: []byte{1, 2, 3, 4},
+				ID:          []byte{1, 2, 3, 4},
+				DisplayName: "display name",
 				CredentialEntity: protocol.CredentialEntity{
 					Name: "user name",
 				},
@@ -131,7 +132,6 @@ func TestRegister(t *testing.T) {
 			origin: origin,
 			createCC: func() *wanlib.CredentialCreation {
 				cc := *okCC
-				cc.Response.User.DisplayName = "display name"
 				cc.Response.AuthenticatorSelection.RequireResidentKey = protocol.ResidentKeyRequired()
 				return &cc
 			},
