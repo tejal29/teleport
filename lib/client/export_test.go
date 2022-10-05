@@ -14,4 +14,4 @@
 
 package client
 
-var PreviewPlatformPasswordless = &previewPlatformPasswordless
+var HasCredentials = &hasCredentials

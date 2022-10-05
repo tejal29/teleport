@@ -338,11 +338,10 @@ func Register(origin string, cc *wanlib.CredentialCreation) (*Registration, erro
 	}, nil
 }
 
-// IsAnyCredentialRegistered checks if there are any credentials registered
-// for given user. If user is empty it checks if there are credentials
-// registered for any user.
+// HasCredentials checks if there are any credentials registered for given user.
+// If user is empty it checks if there are credentials registered for any user.
 // It does not require user interactions.
-func IsAnyCredentialRegistered(rpid, user string) bool {
+func HasCredentials(rpid, user string) bool {
 	if !IsAvailable() {
 		return false
 	}

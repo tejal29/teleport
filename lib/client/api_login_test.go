@@ -77,11 +77,11 @@ func TestTeleportClient_Login_local(t *testing.T) {
 
 	// Reset functions after tests.
 	oldStdin, oldWebauthn := prompt.Stdin(), *client.PromptWebauthn
-	oldPreviewPlatformPasswordless := *client.PreviewPlatformPasswordless
+	oldHasCredentials := *client.HasCredentials
 	t.Cleanup(func() {
 		prompt.SetStdin(oldStdin)
 		*client.PromptWebauthn = oldWebauthn
-		*client.PreviewPlatformPasswordless = oldPreviewPlatformPasswordless
+		*client.HasCredentials = oldHasCredentials
 	})
 
 	waitForCancelFn := func(ctx context.Context) (string, error) {
@@ -140,15 +140,15 @@ func TestTeleportClient_Login_local(t *testing.T) {
 
 	ctx := context.Background()
 	tests := []struct {
-		name                 string
-		secondFactor         constants.SecondFactorType
-		inputReader          *prompt.FakeReader
-		solveWebauthn        func(ctx context.Context, origin string, assertion *wanlib.CredentialAssertion, prompt wancli.LoginPrompt) (*proto.MFAAuthenticateResponse, error)
-		authConnector        string
-		allowStdinHijack     bool
-		preferOTP            bool
-		isPswdlessRegistered bool
-		attachment           wancli.AuthenticatorAttachment
+		name                    string
+		secondFactor            constants.SecondFactorType
+		inputReader             *prompt.FakeReader
+		solveWebauthn           func(ctx context.Context, origin string, assertion *wanlib.CredentialAssertion, prompt wancli.LoginPrompt) (*proto.MFAAuthenticateResponse, error)
+		authConnector           string
+		allowStdinHijack        bool
+		preferOTP               bool
+		hasCredentials          bool
+		authenticatorAttachment wancli.AuthenticatorAttachment
 	}{
 		{
 			name:             "OTP device login with hijack",
@@ -198,25 +198,25 @@ func TestTeleportClient_Login_local(t *testing.T) {
 			authConnector: constants.PasswordlessConnector,
 		},
 		{
-			name:                 "auth=local but use passwordless if was registered",
-			secondFactor:         constants.SecondFactorOptional,
-			inputReader:          prompt.NewFakeReader(), // no inputs
-			solveWebauthn:        solvePwdless,
-			authConnector:        constants.LocalConnector,
-			isPswdlessRegistered: true,
+			name:           "default to passwordless if registered",
+			secondFactor:   constants.SecondFactorOptional,
+			inputReader:    prompt.NewFakeReader(), // no inputs
+			solveWebauthn:  solvePwdless,
+			authConnector:  constants.LocalConnector,
+			hasCredentials: true,
 		},
 		{
-			name:         "auth=local, passwordless registered but using cross-platform att",
+			name:         "cross-platform attachment doesn't default to passwordless",
 			secondFactor: constants.SecondFactorOptional,
 			inputReader: prompt.NewFakeReader().
 				AddString(password).
 				AddReply(func(ctx context.Context) (string, error) {
 					panic("this should not be called")
 				}),
-			solveWebauthn:        solveWebauthn,
-			authConnector:        constants.LocalConnector,
-			isPswdlessRegistered: true,
-			attachment:           wancli.AttachmentCrossPlatform,
+			solveWebauthn:           solveWebauthn,
+			authConnector:           constants.LocalConnector,
+			hasCredentials:          true,
+			authenticatorAttachment: wancli.AttachmentCrossPlatform,
 		},
 	}
 	for _, test := range tests {
@@ -233,8 +233,8 @@ func TestTeleportClient_Login_local(t *testing.T) {
 				return resp, "", err
 			}
 
-			*client.PreviewPlatformPasswordless = func(ctx context.Context, rpid, user string) bool {
-				return test.isPswdlessRegistered
+			*client.HasCredentials = func(rpid, user string) bool {
+				return test.hasCredentials
 			}
 			authServer := sa.Auth.GetAuthServer()
 			pref, err := authServer.GetAuthPreference(ctx)
@@ -249,7 +249,7 @@ func TestTeleportClient_Login_local(t *testing.T) {
 			tc.AllowStdinHijack = test.allowStdinHijack
 			tc.AuthConnector = test.authConnector
 			tc.PreferOTP = test.preferOTP
-			tc.AuthenticatorAttachment = test.attachment
+			tc.AuthenticatorAttachment = test.authenticatorAttachment
 
 			clock.Advance(30 * time.Second)
 			_, err = tc.Login(ctx)

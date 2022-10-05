@@ -3438,7 +3438,7 @@ func (tc *TeleportClient) getSSHLoginFunc(pr *webclient.PingResponse) (SSHLoginF
 		}
 		return tc.pwdlessLogin, nil
 	case authType == constants.Local:
-		if pr.Auth.AllowPasswordless && tc.checkIfPwdlessRegisteredWithoutInteraction(pr) {
+		if tc.canDefaultToPasswordless(pr) {
 			log.Debug("Trying passwordless login because credentials were found")
 			// if passwordless is enabled and there are passwordless credentials
 			// registered, we can try to go with passwordless login even though
@@ -3465,19 +3465,16 @@ func (tc *TeleportClient) getSSHLoginFunc(pr *webclient.PingResponse) (SSHLoginF
 	}
 }
 
-// previewPlatformPasswordless provides indirection for tests.
-var previewPlatformPasswordless = wancli.PreviewIfPlatformPasswordlessRegistered
+// hasCredentials provides indirection for tests.
+var hasCredentials = wancli.HasCredentials
 
-// checkIfPwdlessRegisteredWithoutInteraction checks without user interaction
+// canDefaultToPasswordless checks without user interaction
 // if there is any registered passwordless login.
-// Right now is supports only touchid.
-func (tc *TeleportClient) checkIfPwdlessRegisteredWithoutInteraction(pr *webclient.PingResponse) bool {
-	switch tc.Config.AuthenticatorAttachment {
-	case wancli.AttachmentAuto, wancli.AttachmentPlatform:
-		// continiue below
-	default:
-		// Cross-platform or something newer, we can't check anything without
-		// user interactions
+func (tc *TeleportClient) canDefaultToPasswordless(pr *webclient.PingResponse) bool {
+	if !pr.Auth.AllowPasswordless {
+		return false
+	}
+	if tc.Config.AuthenticatorAttachment == wancli.AttachmentCrossPlatform {
 		return false
 	}
 	if pr.Auth.Webauthn == nil {
@@ -3489,7 +3486,7 @@ func (tc *TeleportClient) checkIfPwdlessRegisteredWithoutInteraction(pr *webclie
 	if tc.ExplicitUsername {
 		user = tc.Username
 	}
-	return previewPlatformPasswordless(context.Background(), pr.Auth.Webauthn.RPID, user)
+	return hasCredentials(pr.Auth.Webauthn.RPID, user)
 }
 
 // SSHLoginFunc is a function which carries out authn with an auth server and returns an auth response.
