@@ -1,6 +1,6 @@
 ---
-title: "Monitor Teleport Audit Events with the Elastic Stack"
-description: "How to configure Teleport's Event Handler plugin to send audit events to the Elastic Stack"
+title: Monitor Teleport Audit Events with Splunk
+description: How to configure Teleport's Event Handler plugin to send audit events to Splunk
 ---
 
 Teleport's Event Handler plugin receives audit events from the Teleport Auth
@@ -9,44 +9,45 @@ historical analysis, detect unusual behavior, and form a better understanding of
 how users interact with your Teleport cluster.
 
 In this guide, we will show you how to configure Teleport's Event Handler plugin
-to send your Teleport audit events to the Elastic Stack. In this setup, the
-Event Handler plugin forwards audit events from Teleport to Logstash, which
-stores them in Elasticsearch for visualization and alerting in Kibana. 
+to send your Teleport audit events to Splunk. In this setup, the Event Handler
+plugin forwards audit events from Teleport to Splunk's Universal Forwarder,
+which stores them in Splunk for visualization and alerting. 
 
 ## Prerequisites
 
 (!docs/pages/includes/commercial-prereqs-tabs.mdx!)
 
-- Logstash version 8.4.1 or above running on a Linux host. Logstash must be
-  listening on a TCP port that is open to traffic from <ScopedBlock
-  scope={["oss", "enterprise"]}>the Teleport Auth
-  Service</ScopedBlock><ScopedBlock scope="cloud">your Teleport Cloud
-  tenant</ScopedBlock>. In this guide, you will also run the Event Handler
-  plugin on this host.
+- Splunk Observability Cloud or Splunk Enterprise v9.0.1 or above. 
 
-- Elasticsearch and Kibana version 8.4.1 or above, either running via an Elastic
-  Cloud account or on your own infrastructure. You will need permissions to
-  create and manage users in Elasticsearch.
+{/* TODO: Indicate open ports on Splunk Enterprise?*/}
 
-  We have tested this guide on the Elastic Stack version 8.4.1.
+- A Linux host where you will run the Teleport Event Handler plugin and Splunk
+  Universal Forwarder. The host must have port `0000` exposed to traffic from
+  the Teleport Auth Service host (or your Teleport Cloud tenant). {/* TODO:
+  update port*/} The Universal Forwarder must be installed on the host already.
+
+  While you can run the Event Handler plugin and Universal
+  Forwarder on separate hosts, this guide will assume that the two are running
+  on the same host.
 
 ## Step 1/4. Set up the Event Handler plugin
 
 The Event Handler plugin is a binary that runs independently of your Teleport
-cluster. It authenticates to your Teleport cluster and Logstash using mutual
-TLS. In this section, you will install the Event Handler plugin on the Linux
-host where you are running Logstash and generate credentials that the plugin
-will use for authentication.
+cluster. It authenticates to your Teleport cluster and your Splunk Universal
+Forwarder using mutual TLS. In this section, you will install the Event Handler
+plugin on the Linux host where you are running your Universal Forwarder and
+generate credentials that the plugin will use for authentication.
 
 ### Install the Event Handler plugin
 
-Follow the instructions for your environment to install the Event Handler
-plugin on your Logstash host:
+Follow the instructions for your environment to install the Event Handler plugin
+on your Universal Forwarder host:
 
 <Tabs dropdownCaption="Method" dropdownSelected="Executable">
   <TabItem options="Executable" label="Latest Release">
 
-  On the host where you are running Logstash, execute the following commands:
+  On the host where you are running the Universal Forwarder, execute the
+  following commands:
 
   ```code
   $ curl -L -O https://get.gravitational.com/teleport-event-handler-v(=teleport.plugin.version=)-linux-amd64-bin.tar.gz
@@ -58,7 +59,8 @@ plugin on your Logstash host:
 
   <TabItem options="Docker" label="Latest Release ">
 
-  On the host where you are running Logstash, execute the following command:
+  On the host where you are running the Universal Forwarder, execute the
+  following command:
 
   ```code
   $ docker pull public.ecr.aws/gravitational/teleport-plugin-event-handler:(=teleport.plugin.version=)
@@ -67,7 +69,7 @@ plugin on your Logstash host:
   </TabItem>
 
   <TabItem options="Docker" label="From Source">
-  You must have Docker Desktop installed on your Logstash host. 
+  You must have Docker Desktop installed on your Universal Forwarder host. 
 
   Log in to the host and execute the following commands to build the plugin:
 
@@ -86,7 +88,7 @@ plugin on your Logstash host:
 
   You will need Go >= (=teleport.golang=) installed.
 
-  Run the following commands on your Logstash host:
+  Run the following commands on your Universal Forwarder host:
 
   ```code 
   $ git clone https://github.com/gravitational/teleport-plugins.git --depth 1
@@ -107,29 +109,28 @@ Generate a configuration file with placeholder values for the Teleport Event
 Handler plugin. Later in this guide, we will edit the configuration file for
 your environment.
 
-On the host where you are running Logstash and the Event Handler plugin, execute
-the following command to generate a sample configuration that we will edit
-later.  Replace `mytenant.teleport.sh` with the DNS name of your Teleport Proxy
-Service or Teleport Cloud tenant:
+On the host where you are running the Universal Forwarder and the Event Handler
+plugin, execute the following command to generate a sample configuration that we
+will edit later. Replace `mytenant.teleport.sh` with the DNS name of your
+Teleport Proxy Service or Teleport Cloud tenant:
 
 ```code
 $ teleport-event-handler configure . mytenant.teleport.sh
 ```
 
 The `teleport-event-handler configure` command generates several files that you
-will refer to when generating credentials for the plugin and configuring a
-Logstash pipeline:
+will refer to when generating credentials for the plugin and configuring the
+Universal Forwarder:
 
 |File(s)|Purpose|
 |---|---|
-| `ca.crt` | Self-signed CA certificate that the Event Handler plugin and Logstash will use to validate one another's TLS certificates.|
-| `server.crt` and `server.key`| TLS certificate and key for the Logstash server.|
+| `ca.crt` | Self-signed CA certificate that the Event Handler plugin and the Universal Forwarder will use to validate one another's TLS certificates.|
+| `server.crt` and `server.key`| TLS certificate and key for the Universal Forwarder.|
 | `client.crt` and `client.key`| TLS certificate and key for the Event Handler plugin.|
 | `teleport-event-handler-role.yaml`| `user` and `role` resource definitions for the Event Handler plugin.|
-| `fluent.conf`| Fluentd configuration file. We will use parts of this to define a Logstash pipeline.|
+| `fluent.conf`| Fluentd configuration file. We will use parts of this to configure the Universal Forwarder.|
 | `teleport-event-handler.toml` | Starter configuration file for the Event Handler plugin.|
 | `ca.key` | Not used in this setup. |
-
 
 ### Define RBAC resources
 
@@ -163,22 +164,6 @@ $ tctl create -f teleport-event-handler-role.yaml
 # user "teleport-event-handler" has been created
 # role 'teleport-event-handler' has been created
 ```
-
-<Details title="Using tctl on the Logstash host?">
-
-If you are running Teleport on your Elastic Stack host, e.g., you are exposing
-Kibana's HTTP endpoint via the Teleport Application Service, running the `tctl
-create` command above will generate an error similar to the following:
-
-```text
-ERROR: tctl must be either used on the auth server or provided with the identity file via --identity flag
-```
-
-To avoid this error, create the `teleport-event-handler-role.yaml` file on your
-workstation, then sign in to your Teleport cluster and run the `tctl` command
-locally.
-
-</Details>
 
 ### Enable impersonation of the Event Handler plugin user
 
@@ -426,293 +411,9 @@ You will refer to this file later when configuring the plugin.
 
 </Admonition>
 
-## Step 2/4. Configure a Logstash pipeline
+## Step 2/4. Configure the Universal Forwarder
 
-The Event Handler plugin forwards audit logs from Teleport by sending HTTP
-requests to a user-configured endpoint. We will define a Logstash pipeline that
-handles these requests, extracts logs, and sends them to Elasticsearch.
-
-### Create a role for the Event Handler plugin
-
-Your Logstash pipeline will require permissions to create and manage
-Elasticsearch indexes and index lifecycle management policies, plus get
-information about your Elasticsearch deployment. Create a role with these
-permissions so you can later assign it to the Elasticsearch user you will
-create for the Event Handler.
-
-In Kibana, navigate to "Management" > "Roles" and click "Create role". Enter the
-name `teleport-plugin` for the new role. Under the "Elasticsearch" section,
-under "Cluster privileges", enter `manage_index_templates`, `manage_ilm`, and
-`monitor`.
-
-Under "Index privileges", define an entry with `audit-events-*` in the "Indices"
-field and `write` and `manage` in the "Privileges" field. Click "Create role".
-
-![Creating an Elasticsearch role](../../../img/enterprise/plugins/elasticsearch/create-role.png)
-
-### Create an Elasticsearch user for the Event Handler
-
-Create an Elasticsearch user that Logstash can authenticate as when making
-requests to the Elasticsearch API. 
-
-In Kibana, find the hamburger menu on the upper left and click "Management",
-then "Users" > "Create user". Enter `teleport` for the "Username" and provide a
-secure password.
-
-Assign the user the `teleport-plugin` role we defined earlier.
-
-### Prepare TLS credentials for Logstash
-
-Later in this guide, your Logstash pipeline will use an HTTP input to receive
-audit events from the Teleport Event Handler plugin.
-
-Logstash's HTTP input can only sign certificates with a private key that uses
-the unencrypted PKCS #8 format. When you ran `teleport-event-handler configure`
-earlier, the command generated an encrypted RSA key. We will convert this key to
-PKCS #8.
-
-You will need a password to decrypt the RSA key. To retrieve this, execute the
-following command in the directory where you ran `teleport-event-handler
-configure`:
-
-```code
-$ cat fluent.conf | grep passphrase
-private_key_passphrase "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-```
-
-Convert the encrypted RSA key to an unencrypted PKCS #8 key. The command will
-prompt your for the password you retrieved: 
-
-```code
-$ openssl pkcs8 -topk8 -in server.key -nocrypt -out pkcs8.key
-```
-
-Enable Logstash to read the new key, plus the CA and certificate we generated
-earlier:
-
-```code
-$ chmod +r pkcs8.key ca.crt server.crt
-```
-
-### Define an index template
-
-When the Event Handler plugin sends audit events to Logstash, Logstash needs to
-know how to parse these events to forward them to Elasticsearch. You can define
-this logic using an index template, which Elasticsearch uses to construct an
-index for data it receives.
-
-Create a file called `audit-events.json` with the following content:
-
-```json
-{
-  "index_patterns": ["audit-events-*"],
-  "template": {
-    "settings": {},
-    "mappings": {
-      "dynamic":"true"
-    }
-  }
-}
-```
-
-This index template modifies any index with the pattern `audit-events-*`.
-Because it includes the `"dynamic": "true"` setting, it instructs Elasticsearch
-to define index fields dynamically based on the events it receives. This is
-useful for Teleport audit events, which use a variety of fields depending on
-the event type.
-
-### Define a Logstash pipeline
-
-On the host where you are running Logstash, create a configuration file that
-defines a Logstash pipeline. This pipeline will receive logs from port `9601`
-and forward them to Elasticsearch.
-
-On the host running Logstash, create a file called
-`/etc/logstash/conf.d/teleport-audit.conf` with the following content:
- 
-```ruby
-input {
-  http {
-    port => 9601
-    ssl =>  true
-    ssl_certificate => "/home/server.crt"
-    ssl_key =>  "/home/pkcs8.key"
-    ssl_certificate_authorities => [
-      "/home/ca.crt"
-    ]
-    ssl_verify_mode => "force_peer"
-  }
-}
-output {
-  elasticsearch {
-    user => "teleport"
-    password => "ELASTICSEARCH_PASSPHRASE"
-    template_name => "audit-events"
-    template => "/home/audit-events.json"
-    index => "audit-events-%{+yyyy.MM.dd}"
-    template_overwrite => true
-  }
-}
-```
-
-In the `input.http` section, update `ssl_certificate` and
-`ssl_certificate_authorities` to include the locations of the server certificate
-and certificate authority files that the `teleport-event-handler configure`
-command generated earlier. 
-
-Logstash will authenticate client certificates against the CA file and present a
-signed certificate to the Teleport Event Handler plugin.
-
-Edit the `ssl_key` field to include the path to the `pkcs8.key` file we
-generated earlier.
-
-In the `output.elasticsearch` section, edit the following fields depending on
-whether you are using Elastic Cloud or your own Elastic Stack deployment:
-
-<Tabs>
-<TabItem label="Elastic Cloud">
-
-Assign `cloud_auth` to a string with the content `teleport:PASSWORD`, replacing
-`PASSWORD` with the password you assigned to your `teleport` user earlier.	
-
-Visit `https://cloud.elastic.co/deployments`, find the "Cloud ID" field, copy
-the content, and add it as the value of `cloud_id` in your Logstash pipeline
-configuration. The `elasticsearch` section should resemble the following:
-
-```ruby
-  elasticsearch {
-    cloud_id => "CLOUD_ID"
-    cloud_auth => "teleport:PASSWORD" 
-    template_name => "audit-events"
-    template => "/home/audit-events.json"
-    index => "audit-events-%{+yyyy.MM.dd}"
-    template_overwrite => true
-  }
-```
-
-</TabItem>
-<TabItem label="Self-Hosted">
-
-Assign `hosts` to a string indicating the hostname of your Elasticsearch host. 
-
-Assign `user` to `teleport` and `password` to the passphrase you created for
-your `teleport` user earlier.
-
-The `elasticsearch` section should resemble the following:
-
-```ruby
-  elasticsearch {
-    hosts => "elasticsearch.example.com"
-    user => "teleport" 
-    password => "PASSWORD" 
-    template_name => "audit-events"
-    template => "/home/audit-events.json"
-    index => "audit-events-%{+yyyy.MM.dd}"
-    template_overwrite => true
-  }
-```
-
-</TabItem>
-</Tabs>
-
-Finally, modify `template` to point to the path to the `audit-events.json` file
-you created earlier. 
-
-Because the index template we will create with this file applies to indices
-with the prefix `audit-events-*`, and we have configured our Logstash pipeline
-to create an index with the title `"audit-events-%{+yyyy.MM.dd}`, Elasticsearch
-will automatically index fields from Teleport audit events.
-
-### Disable the Elastic Common Schema for your pipeline
-
-The Elastic Common Schema (ECS) is a standard set of fields that Elastic Stack
-uses to parse and visualize data. Since we are configuring Elasticsearch to
-index all fields from your Teleport audit logs dynamically, we will disable the
-ECS for your Logstash pipeline.
-
-On the host where you are running Logstash, edit `/etc/logstash/pipelines.yml`
-to add the following entry:
-
-```yaml
-- pipeline.id: teleport-audit-logs
-  path.config: "/etc/logstash/conf.d/teleport-audit.conf"
-  pipeline.ecs_compatibility: disabled
-```
-
-This disables the ECS for your Teleport audit log pipeline.
-
-<Admonition type="tip">
-
-If your `pipelines.yml` file defines an existing pipeline that includes
-`teleport-audit.conf`, e.g., by using a wildcard value in `path.config`, adjust
-the existing pipeline definition so it no longer applies to
-`teleport-audit.conf`.
-
-</Admonition>
-
-### Run the Logstash pipeline
-
-Restart Logstash:
-
-```code
-$ sudo systemctl restart logstash
-```
-
-Make sure your Logstash pipeline started successfully by running the following
-command to tail Logstash's logs:
-
-```code
-$ sudo journalctl -u logstash -f
-```
-
-When your Logstash pipeline initializes its `http` input and starts running, you
-should see a log similar to this:
-
-```text
-Sep 15 18:27:13 myhost logstash[289107]: [2022-09-15T18:27:13,491][INFO ][logstash.inputs.http][main][33bdff0416b6a2b643e6f4ab3381a90c62b3aa05017770f4eb9416d797681024] Starting http input listener {:address=>"0.0.0.0:9601", :ssl=>"true"}
-```
-
-These logs indicate that your Logstash pipeline has connected to Elasticsearch
-and installed a new index template:
-
-```text
-Sep 12 19:49:06 myhost logstash[33762]: [2022-09-12T19:49:06,309][INFO ][logstash.outputs.elasticsearch][main] Elasticsearch version determined (8.4.1) {:es_version=>8}
-Sep 12 19:50:00 myhost logstash[33762]: [2022-09-12T19:50:00,993][INFO ][logstash.outputs.elasticsearch][main] Installing Elasticsearch template {:name=>"audit-events"}
-```
-<Details title="Pipeline not starting?">
-
-If Logstash fails to initialize the pipeline, it may continue to attempt to
-contact Elasticsearch. In that case, you will see repeated logs like the one below:
-
-```text
-Sep 12 19:43:04 myhost logstash[33762]: [2022-09-12T19:43:04,519][WARN ][logstash.outputs.elasticsearch][main] Attempted to resurrect connection to dead ES instance, but got an error {:url=>"http://teleport:xxxxxx@127.0.0.1:9200/", :exception=>LogStash::Outputs::ElasticSearch::HttpClient::Pool::HostUnreachableError, :message=>"Elasticsearch Unreachable: [http://127.0.0.1:9200/][Manticore::ClientProtocolException] 127.0.0.1:9200 failed to respond"}
-```
-
-### Diagnosing the problem
-
-To diagnose the cause of errors initializing your Logstash pipeline, search your
-Logstash `journalctl` logs for the following, which indicate that the pipeline is
-starting. The relevant error logs should come shortly after these:
-
-```text
-Sep 12 18:15:52 myhost logstash[27906]: [2022-09-12T18:15:52,146][INFO][logstash.javapipeline][main] Starting pipeline {:pipeline_id=>"main","pipeline.workers"=>2, "pipeline.batch.size"=>125, "pipeline.batch.delay"=>50,"pipeline.max_inflight"=>250,"pipeline.sources"=>["/etc/logstash/conf.d/teleport-audit.conf"],:thread=>"#<Thread:0x1c1a3ee5 run>"}
-Sep 12 18:15:52 myhost logstash[27906]: [2022-09-12T18:15:52,912][INFO][logstash.javapipeline][main] Pipeline Java execution initialization time {"seconds"=>0.76}
-```
-
-### Disabling Elasticsearch TLS
-
-This guide assumes that you have already configured Elasticsearch and Logstash
-to communicate with one another via TLS. 
-
-If your Elastic Stack deployment is in a sandboxed or low-security environment
-(e.g., a demo environment), and your `journalctl` logs for Logstash show that
-Elasticsearch is unreachable, you can disable TLS for communication between
-Logstash and Elasticsearch.
-
-Edit the file `/etc/elasticsearch/elasticsearch.yml` to set
-`xpack.security.http.ssl.enabled` to `false`, then restart Elasticsearch.
-
-</Details>
+{/*TODO: Add instructions for configuring the Universal Forwarder*/}
 
 ## Step 3/4. Run the Event Handler plugin
 
@@ -740,8 +441,9 @@ identity = "identity"
 
 Update the configuration file as follows.
 
+{/*TODO: update the address*/}
 Change `forward.fluentd.url`  to the scheme, host and port you configured for
-your Logstash `http` input earlier, `https://localhost:9601`. Change
+your Universal Forwarder's `http` input earlier, `https://localhost:9601`. Change
 `forward.fluentd.session-url` to the same value with the root URL path:
 `https://localhost:9601/`.
 
@@ -805,34 +507,11 @@ DEBU   Event sent id:f19cf375-4da6-4338-bfdc-e38334c60fd1 index:0 ts:2022-09-21
 ...
 ```
 
-## Step 4/4. Create a data view in Kibana
-
-Make it possible to explore your Teleport audit events in Kibana by creating a
-data view. In the Elastic Stack UI, find the hamburger menu on the upper
-left of the screen, then click "Management" > "Data Views". Click "Create data
-view".
-
-For the "Name" field, use "Teleport Audit Events". In "Index pattern", use
-`audit-events-*` to select all indices created by our Logstash pipeline. In
-"Timestamp field", choose `time`, which Teleport adds to its audit events.
-
-![Creating a data view](../../../img/enterprise/plugins/elasticsearch/data-view-create.png)
-
-To use your data view, find the search box at the top of the Elastic Stack UI
-and enter "Discover". On the upper left of the screen, click the dropdown menu
-and select "Teleport Audit Events". You can now search and filter your Teleport
-audit events in order to get a better understanding how users are interacting
-with your Teleport cluster.
-
-![Creating a data view](../../../img/enterprise/plugins/elasticsearch/data-view-explore.png)
-
-For example, we can click the `event` field on the left sidebar and visualize
-the event types for your Teleport audit events over time:
-
-![Creating a visualization](../../../img/enterprise/plugins/elasticsearch/lens.png)
+## Step 4/4. Visualize your audit logs in Splunk
+{/*TODO: Fill this in*/}
 
 ## Next steps
 
-Now that you are exporting your audit events to the Elastic Stack, consult our
-[audit event reference](../../reference/audit.mdx#event-types) so you can plan
-visualizations and alerts.
+Now that you are exporting your audit events to Splunk, consult our [audit event
+reference](../../reference/audit.mdx#event-types) so you can plan visualizations
+and alerts.
