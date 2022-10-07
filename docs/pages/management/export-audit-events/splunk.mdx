@@ -11,24 +11,27 @@ how users interact with your Teleport cluster.
 In this guide, we will show you how to configure Teleport's Event Handler plugin
 to send your Teleport audit events to Splunk. In this setup, the Event Handler
 plugin forwards audit events from Teleport to Splunk's Universal Forwarder,
-which stores them in Splunk for visualization and alerting. 
+which stores them in Splunk Cloud Platform or Splunk Enterprise for
+visualization and alerting. 
 
 ## Prerequisites
 
 (!docs/pages/includes/commercial-prereqs-tabs.mdx!)
 
-- Splunk Observability Cloud or Splunk Enterprise v9.0.1 or above. 
-
-{/* TODO: Indicate open ports on Splunk Enterprise?*/}
-
 - A Linux host where you will run the Teleport Event Handler plugin and Splunk
-  Universal Forwarder. The host must have port `0000` exposed to traffic from
-  the Teleport Auth Service host (or your Teleport Cloud tenant). {/* TODO:
-  update port*/} The Universal Forwarder must be installed on the host already.
+  Universal Forwarder. The Universal Forwarder must be installed on the host
+  already. This guide will assume that you are running the Universal Forwarder
+  on the same host as the Event Handler.
 
-  While you can run the Event Handler plugin and Universal
-  Forwarder on separate hosts, this guide will assume that the two are running
-  on the same host.
+  If you run the Event Handler and Universal Forwarder on the same host, there
+  is no need for an open intake port. However, if you run the Universal
+  Forwarder on a separate host from the Event Handler, you will need to open a
+  port on the Universal Forwarder host to traffic from the Event Handler. This
+  guide assumes that the Universal Forwarder is listening on port `8888`.
+
+- Splunk Cloud Platform or Splunk Enterprise v9.0.1 or above. On Splunk
+  Enterprise, port `9997` should be open to traffic from the host running the
+  Teleport Event Handler and Universal Forwarder.
 
 ## Step 1/4. Set up the Event Handler plugin
 
