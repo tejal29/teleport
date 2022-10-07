@@ -20,18 +20,25 @@ visualization and alerting.
 
 - A Linux host where you will run the Teleport Event Handler plugin and Splunk
   Universal Forwarder. The Universal Forwarder must be installed on the host
-  already. This guide will assume that you are running the Universal Forwarder
-  on the same host as the Event Handler.
+  already.
+
+  <Details title="Running the Event Handler and Universal Forwarder on separate
+  hosts">
 
   If you run the Event Handler and Universal Forwarder on the same host, there
-  is no need for an open intake port. However, if you run the Universal
-  Forwarder on a separate host from the Event Handler, you will need to open a
-  port on the Universal Forwarder host to traffic from the Event Handler. This
-  guide assumes that the Universal Forwarder is listening on port `8888`.
+  is no need to open a port on the host for ingesting logs. However, if you run
+  the Universal Forwarder on a separate host from the Event Handler, you will
+  need to open a port on the Universal Forwarder host to traffic from the Event
+  Handler. This guide assumes that the Universal Forwarder is listening on port
+  `8888`.
+
+  </Details>
 
 - Splunk Cloud Platform or Splunk Enterprise v9.0.1 or above. On Splunk
   Enterprise, port `9997` should be open to traffic from the host running the
   Teleport Event Handler and Universal Forwarder.
+
+(!docs/pages/includes/tctl.mdx!)
 
 ## Step 1/4. Set up the Event Handler plugin
 
@@ -160,7 +167,8 @@ spec:
 version: v2
 ```
 
-Use `tctl` to create the role and the user:
+Move this file to your workstation (or recreate it by pasting the snippet above)
+and use `tctl` on your workstation to create the role and the user:
 
 ```code
 $ tctl create -f teleport-event-handler-role.yaml
@@ -402,6 +410,9 @@ Service's gRPC endpoint.
 You will refer to this file later when configuring the plugin.
 
 </ScopedBlock>
+
+Move the credentials you generated to the host where you are running the Event
+Handler plugin.
 
 <Admonition
   title="Certificate Lifetime"
