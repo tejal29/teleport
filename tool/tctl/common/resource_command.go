@@ -106,6 +106,7 @@ func (rc *ResourceCommand) Initialize(app *kingpin.Application, config *service.
 		types.KindDatabase:                rc.createDatabase,
 		types.KindToken:                   rc.createToken,
 		types.KindInstaller:               rc.createInstaller,
+		types.KindPolicy:                  rc.createPolicy,
 	}
 	rc.config = config
 
@@ -601,6 +602,16 @@ func (rc *ResourceCommand) createInstaller(ctx context.Context, client auth.Clie
 	}
 
 	err = client.SetInstaller(ctx, inst)
+	return trace.Wrap(err)
+}
+
+func (rc *ResourceCommand) createPolicy(ctx context.Context, client auth.ClientI, raw services.UnknownResource) error {
+	_, err := services.UnmarshalPolicy(raw.Raw)
+	if err != nil {
+		return trace.Wrap(err)
+	}
+
+	// write policy to auth here
 	return trace.Wrap(err)
 }
 
