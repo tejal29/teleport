@@ -531,6 +531,7 @@ func newSession(ctx context.Context, id rsession.ID, r *SessionRegistry, scx *Se
 	sess := &session{
 		log: log.WithFields(log.Fields{
 			trace.Component: teleport.Component(teleport.ComponentSession, r.Srv.Component()),
+			"session_id":    id,
 		}),
 		id:                             id,
 		registry:                       r,
@@ -619,7 +620,7 @@ func (s *session) Stop() {
 	}
 
 	s.BroadcastMessage("Stopping session...")
-	s.log.Infof("Stopping session %v.", s.id)
+	s.log.Info("Stopping session")
 
 	// close io copy loops
 	s.io.Close()
@@ -648,7 +649,7 @@ func (s *session) Close() error {
 	s.Stop()
 
 	s.BroadcastMessage("Closing session...")
-	s.log.Infof("Closing session %v.", s.id)
+	s.log.Infof("Closing session")
 
 	serverSessions.Dec()
 
@@ -867,7 +868,7 @@ func (s *session) setHasEnhancedRecording(val bool) {
 // launch launches the session.
 // Must be called under session Lock.
 func (s *session) launch(ctx *ServerContext) error {
-	s.log.Debugf("Launching session %v.", s.id)
+	s.log.Debug("Launching session")
 	s.BroadcastMessage("Connecting to %v over SSH", s.serverMeta.ServerHostname)
 
 	s.io.On()
@@ -951,7 +952,7 @@ func (s *session) startInteractive(ctx context.Context, ch ssh.Channel, scx *Ser
 	}
 
 	if cgroupID, err := scx.srv.OpenBPFSession(scx); err != nil {
-		scx.Errorf("Failed to open enhanced recording (interactive) session: %v: %v.", s.id, err)
+		scx.Errorf("Failed to open enhanced recording (interactive) session: %v.", err)
 		return trace.Wrap(err)
 	} else if cgroupID > 0 {
 		// If a cgroup ID was assigned then enhanced session recording was enabled.
@@ -963,7 +964,7 @@ func (s *session) startInteractive(ctx context.Context, ch ssh.Channel, scx *Ser
 			scx.srv.CloseRestrictedSession(scx, cgroupID)
 			err = scx.srv.CloseBPFSession(scx)
 			if err != nil {
-				scx.Errorf("Failed to close enhanced recording (interactive) session: %v: %v.", s.id, err)
+				scx.Errorf("Failed to close enhanced recording (interactive) session: %", err)
 			}
 		}()
 	}
@@ -992,7 +993,7 @@ func (s *session) startInteractive(ctx context.Context, ch ssh.Channel, scx *Ser
 	go func() {
 		result, err := s.term.Wait()
 		if err != nil {
-			scx.Errorf("Received error waiting for the interactive session %v to finish: %v.", s.id, err)
+			scx.Errorf("Received error waiting for the interactive session to finish: %v.", err)
 		}
 
 		// wait for copying from the pty to be complete or a timeout before
@@ -1000,7 +1001,7 @@ func (s *session) startInteractive(ctx context.Context, ch ssh.Channel, scx *Ser
 		// closed already.
 		select {
 		case <-time.After(defaults.WaitCopyTimeout):
-			s.log.Errorf("Timed out waiting for PTY copy to finish, session data for %v may be missing.", s.id)
+			s.log.Errorf("Timed out waiting for PTY copy to finish, session data  may be missing.")
 		case <-s.doneCh:
 		}
 
@@ -1181,7 +1182,7 @@ func (s *session) startExec(ctx context.Context, channel ssh.Channel, scx *Serve
 		// or running in a recording proxy, this is simply a NOP.
 		err = scx.srv.CloseBPFSession(scx)
 		if err != nil {
-			scx.Errorf("Failed to close enhanced recording (exec) session: %v: %v.", s.id, err)
+			scx.Errorf("Failed to close enhanced recording (exec) session: %v.", err)
 		}
 
 		s.emitSessionEndEvent()
@@ -1198,7 +1199,7 @@ func (s *session) startExec(ctx context.Context, channel ssh.Channel, scx *Serve
 func (s *session) newStreamer(ctx *ServerContext) (events.Streamer, error) {
 	mode := ctx.SessionRecordingConfig.GetMode()
 	if services.IsRecordSync(mode) {
-		s.log.Debugf("Using sync streamer for session %v.", s.id)
+		s.log.Debug("Using sync streamer for session")
 		return ctx.srv, nil
 	}
 
@@ -1207,7 +1208,7 @@ func (s *session) newStreamer(ctx *ServerContext) (events.Streamer, error) {
 		return events.NewTeeStreamer(events.NewDiscardEmitter(), ctx.srv), nil
 	}
 
-	s.log.Debugf("Using async streamer for session %v.", s.id)
+	s.log.Debug("Using async streamer for session")
 	fileStreamer, err := filesessions.NewStreamer(sessionsStreamingUploadDir(ctx))
 	if err != nil {
 		return nil, trace.Wrap(err)
@@ -1243,7 +1244,7 @@ func (s *session) String() string {
 // if the party is the last in the session or has policies that dictate it to end.
 // Must be called under session Lock.
 func (s *session) removePartyUnderLock(p *party) error {
-	s.log.Infof("Removing party %v from session %v", p, s.id)
+	s.log.Infof("Removing party %v from session", p)
 
 	// Remove participant from in-memory map of party members.
 	delete(s.parties, p.id)
@@ -1315,11 +1316,11 @@ func (s *session) isStopped() bool {
 // lingerAndDie will let the party-less session linger for a short
 // duration, and then die if no parties have joined.
 func (s *session) lingerAndDie(ctx context.Context, party *party) {
-	s.log.Debugf("Session %v has no active party members.", s.id)
+	s.log.Debug("Session has no active party members.")
 
 	select {
 	case <-s.registry.clock.After(defaults.SessionIdlePeriod):
-		s.log.Infof("Session %v will be garbage collected.", s.id)
+		s.log.Info("Session will be garbage collected.")
 
 		// set closing context to the leaving party to show who ended the session.
 		s.setEndingContext(party.ctx)
@@ -1328,7 +1329,7 @@ func (s *session) lingerAndDie(ctx context.Context, party *party) {
 		// complete cleanup and close the session.
 		s.Stop()
 	case <-ctx.Done():
-		s.log.Infof("Session %v has become active again.", s.id)
+		s.log.Info("Session has become active again.")
 		return
 	case <-s.stopC:
 		return
@@ -1438,7 +1439,7 @@ func (s *session) addParty(p *party, mode types.SessionParticipantMode) error {
 	s.io.AddWriter(string(p.id), p)
 
 	s.BroadcastMessage("User %v joined the session.", p.user)
-	s.log.Infof("New party %v joined session: %v", p.String(), s.id)
+	s.log.Infof("New party %v joined session", p.String())
 
 	if mode == types.SessionPeerMode {
 		s.term.AddParty(1)
@@ -1459,7 +1460,7 @@ func (s *session) addParty(p *party, mode types.SessionParticipantMode) error {
 
 		if canStart {
 			if err := s.launch(s.scx); err != nil {
-				s.log.Errorf("Failed to launch session %v: %v", s.id, err)
+				s.log.Errorf("Failed to launch session: %v", err)
 			}
 			return nil
 		}
@@ -1616,17 +1617,45 @@ func (s *session) trackSession(ctx context.Context, teleportUser string, policyS
 		}
 	}
 
-	s.log.Debug("Creating session tracker")
-	var err error
-
+	svc := s.registry.SessionTrackerService
 	// if doing proxy recording, don't propagate tracker to the cluster level
 	if s.registry.Srv.Component() == teleport.ComponentNode && services.IsRecordAtProxy(s.scx.SessionRecordingConfig.GetMode()) {
-		s.tracker, err = NewSessionTracker(ctx, trackerSpec, nil)
-	} else {
-		s.tracker, err = NewSessionTracker(ctx, trackerSpec, s.registry.SessionTrackerService)
+		svc = nil
 	}
-	if err != nil {
+
+	s.log.Debug("Attempting to create session tracker")
+	tracker, err := NewSessionTracker(ctx, trackerSpec, svc)
+	switch {
+	// there was an error, likely propagating the tracker, try to create a tracker that isn't propagated
+	// as long as the session doesn't require moderation
+	case err != nil && svc != nil:
+		s.log.WithError(err).Debug("Failed to create session tracker, determining if session can proceed")
+
+		start, _, startErr := s.checkIfStart()
+		if startErr != nil {
+			return trace.NewAggregate(err, startErr)
+		}
+
+		if !start {
+			s.log.Debug("Cannot start moderated session without a session tracker")
+			return trace.Wrap(err)
+		}
+
+		s.log.Debug("Moderated sessions are not required, proceeding with local session tracker")
+
+		localTracker, err := NewSessionTracker(ctx, trackerSpec, nil)
+		// this error means there are problems with the trackerSpec, we need to return it
+		if err != nil {
+			return trace.Wrap(err)
+		}
+
+		s.tracker = localTracker
+	// there was an error even though the tracker wasn't being propagated, we need to return it
+	case err != nil && svc == nil:
 		return trace.Wrap(err)
+	// the tracker was created successfully
+	case err == nil:
+		s.tracker = tracker
 	}
 
 	go func() {
