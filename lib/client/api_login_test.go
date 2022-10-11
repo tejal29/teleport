@@ -77,9 +77,17 @@ func TestTeleportClient_Login_local(t *testing.T) {
 
 	// Reset functions after tests.
 	oldStdin, oldWebauthn := prompt.Stdin(), *client.PromptWebauthn
+	oldHasPlatformSupport := wancli.HasPlatformSupport
+	t.Cleanup(func() {
+		wancli.HasPlatformSupport = func() bool {
+			return true
+		}
+	})
+
 	t.Cleanup(func() {
 		prompt.SetStdin(oldStdin)
 		*client.PromptWebauthn = oldWebauthn
+		wancli.HasPlatformSupport = oldHasPlatformSupport
 	})
 
 	waitForCancelFn := func(ctx context.Context) (string, error) {
