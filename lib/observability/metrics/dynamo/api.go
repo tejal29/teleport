@@ -67,7 +67,7 @@ func (m *APIMetrics) DeleteItemWithContext(ctx context.Context, input *dynamodb.
 	start := time.Now()
 	output, err := m.DynamoDBAPI.DeleteItemWithContext(ctx, input, opts...)
 
-	recordMetrics(m.tableType, "delete_item", err, time.Since(start).Seconds())
+	recordMetrics(m.tableType, "delete_item", err, time.Since(start).Seconds(), output.ConsumedCapacity)
 
 	return output, err
 }
@@ -76,7 +76,7 @@ func (m *APIMetrics) GetItemWithContext(ctx context.Context, input *dynamodb.Get
 	start := time.Now()
 	output, err := m.DynamoDBAPI.GetItemWithContext(ctx, input, opts...)
 
-	recordMetrics(m.tableType, "get_item", err, time.Since(start).Seconds())
+	recordMetrics(m.tableType, "get_item", err, time.Since(start).Seconds(), output.ConsumedCapacity)
 
 	return output, err
 }
@@ -85,7 +85,7 @@ func (m *APIMetrics) PutItemWithContext(ctx context.Context, input *dynamodb.Put
 	start := time.Now()
 	output, err := m.DynamoDBAPI.PutItemWithContext(ctx, input, opts...)
 
-	recordMetrics(m.tableType, "put_item", err, time.Since(start).Seconds())
+	recordMetrics(m.tableType, "put_item", err, time.Since(start).Seconds(), output.ConsumedCapacity)
 
 	return output, err
 }
@@ -94,7 +94,7 @@ func (m *APIMetrics) UpdateItemWithContext(ctx context.Context, input *dynamodb.
 	start := time.Now()
 	output, err := m.DynamoDBAPI.UpdateItemWithContext(ctx, input, opts...)
 
-	recordMetrics(m.tableType, "update_item", err, time.Since(start).Seconds())
+	recordMetrics(m.tableType, "update_item", err, time.Since(start).Seconds(), output.ConsumedCapacity)
 
 	return output, err
 }
@@ -112,7 +112,7 @@ func (m *APIMetrics) BatchWriteItemWithContext(ctx context.Context, input *dynam
 	start := time.Now()
 	output, err := m.DynamoDBAPI.BatchWriteItemWithContext(ctx, input, opts...)
 
-	recordMetrics(m.tableType, "batch_write_item", err, time.Since(start).Seconds())
+	recordMetrics(m.tableType, "batch_write_item", err, time.Since(start).Seconds(), output.ConsumedCapacity...)
 
 	return output, err
 }
@@ -121,7 +121,7 @@ func (m *APIMetrics) ScanWithContext(ctx context.Context, input *dynamodb.ScanIn
 	start := time.Now()
 	output, err := m.DynamoDBAPI.ScanWithContext(ctx, input, opts...)
 
-	recordMetrics(m.tableType, "scan", err, time.Since(start).Seconds())
+	recordMetrics(m.tableType, "scan", err, time.Since(start).Seconds(), output.ConsumedCapacity)
 
 	return output, err
 }
@@ -148,7 +148,7 @@ func (m *APIMetrics) QueryWithContext(ctx context.Context, input *dynamodb.Query
 	start := time.Now()
 	output, err := m.DynamoDBAPI.QueryWithContext(ctx, input, opts...)
 
-	recordMetrics(m.tableType, "query", err, time.Since(start).Seconds())
+	recordMetrics(m.tableType, "query", err, time.Since(start).Seconds(), output.ConsumedCapacity)
 
 	return output, err
 }
