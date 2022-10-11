@@ -436,6 +436,57 @@ content type `application/json`.
 We will assume that you assigned `$SPLUNK_HOME` to `/opt/splunkforwarder` when
 installing the Universal Forwarder. 
 
+### Create an index for your audit logs
+
+Create an index for your Teleport audit logs by visiting the homepage of the
+Splunk UI and navigating to "Settings > Indexes". Click "New Index". Name your
+index "teleport-audit-logs" and assign the "Index Data Type" to "Events". 
+
+The values of the remaining fields, "Max raw data size" and "Searchable
+retention (days)", depend on your organization's resources and practices for log
+management.
+
+Click "Save".
+
+### Create a token for the Universal Forwarder
+
+The Universal Forwarder authenticates client traffic using a token. To generate
+this, visit the homepage of the Splunk UI. Navigate to "Settings > Data inputs".
+In the "Local inputs" table, find the "HTTP Event Collector" row and click "+
+Add new". 
+
+Enter a name you can use to recognize the token later so you can
+manage it, e.g., "Teleport Audit Events". Click "Next".
+
+Next to the "Source type" field, click "Select", then in the "Select Source
+Type" dropdown menu, click "Structured", then "_json". Splunk will index
+incoming logs as JSON, which is the format the Event Handler uses to send logs
+to the Universal Forwarder.
+
+Beside "Index", select the "teleport-audit-logs" index you created earlier.
+Click "Next", then view the summary and click "Submit". Copy the "Token Value"
+field and keep it somewhere safe so you can use it later in this guide.
+
+### Prepare a certificate file for the Universal Forwarder
+
+The Universal Forwarder signs TLS certificates using a file that contains both
+an X.509-format certificate and an RSA private key. To prepare this, run the
+following commands, where `server.crt` and `server.key` are two of the files you
+generated earlier with the `teleport-event-handler configure` the command:
+
+```code
+$ cp server.crt server.pem
+$ cat server.key >> server.pem
+```
+
+Allow the Universal Forwarder to access the certificate file:
+
+```code
+$ sudo chown splunk:splunk server.pem
+```
+
+### Configure the HTTP Event Collector
+
 <Details title="Finding your $SPLUNK_HOME">
 
 To find your `$SPLUNK_HOME`, run the following command to see the location your
@@ -482,6 +533,8 @@ forard logs to Splunk, assigning them to the `teleport-audit` index. `enableSSL
 = 1` enables SSL for the input, which promotes defense in depth if you are
 running the Universal Forwarder and the Event Handler on the same host and is
 necessary for security if not.
+
+### Configure TLS
 
 To configure secure communications between the Universal Forwarder and the Event
 Handler, create a file called
